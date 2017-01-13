@@ -89,6 +89,176 @@ namespace ComputationalMechanicsLibrary
 			};
 		
 			template<typename T>
+			class PlaneRigidFrameSolver :public ISolver<T>
+			{
+			public:
+				PlaneRigidFrameSolver(std::vector<IElement<T>*>& _element)
+				{
+					//assemb integral matrix
+					this->element = _element;
+					int length = this->Length();
+					this->stiffness = Matrix<T>(length, length);
+					this->force = Matrix<T>(length, 1);
+					this->displacement = Matrix<T>(length, 1);
+					this->unKnowForce.resize(length);
+					this->unKnowDisplacement.resize(length);
+
+					for (IElement<T>* e : this->element)
+					{
+						int ei = e->Node()[0];
+						int ej = e->Node()[1];
+
+						int ni = ei, nj = ei;
+						for (int i = 0; i < e->Stiffness().Row(); i++)
+						{
+							if (i >= 3)
+							{
+								ni = ej;
+							}
+							else
+							{
+								ni = ei;
+							}
+
+							this->force[(ni - 1) * 3 + i % 3][0] += e->Force()[i][0];
+							this->unKnowForce[(ni - 1) * 3 + i % 3] = e->UnKnowForce()[i];
+							this->displacement[(ni - 1) * 3 + i % 3][0] += e->Displacement()[i][0];
+							this->unKnowDisplacement[(ni - 1) * 3 + i % 3] = e->UnKnowDisplacement()[i];
+
+
+							for (int j = 0; j < e->Stiffness().Column(); j++)
+							{
+								if (j >= 3)
+								{
+									nj = ej;
+								}
+								else
+								{
+									nj = ei;
+								}
+
+								this->stiffness[(ni - 1) * 3 + i % 3][(nj - 1) * 3 + j % 3] += e->Stiffness()[i][j];
+							}
+						}
+				
+
+					}
+					
+					//remove known displacements
+					int newLength = 0;
+					for (int f : this->unKnowDisplacement)
+					{
+						if (f == 0)
+						{
+							newLength++;
+						}
+					}
+
+					Matrix<T> newStiffness(newLength, newLength);
+					Matrix<T> newForce(newLength, 1);
+					for (int i = 0, k = 0; i<newStiffness.Row(); k++, i++)
+					{
+						while (k < this->unKnowDisplacement.size() && this->unKnowDisplacement[k] == 1)
+						{
+							k++;
+						}
+						if (k >= this->unKnowDisplacement.size())
+						{
+							continue;
+						}
+						else
+						{
+							newForce[i][0] = this->force[k][0];
+						}
+
+						for (int j = 0, l = 0; j<newStiffness.Column(); j++, l++)
+						{
+							while (l < this->unKnowDisplacement.size() && this->unKnowDisplacement[l] == 1)
+							{
+								l++;
+							}
+							if (l >= this->unKnowDisplacement.size())
+							{
+								continue;
+							}
+							else
+							{
+								newStiffness[i][j] = this->stiffness[k][l];
+							}
+
+						}
+					}
+
+					Matrix<T> newDisplacement = (newStiffness^-1) * newForce;
+
+					//full origin matrix
+					for (int i = 0, j = 0; i<length; i++)
+					{
+						if (this->unKnowDisplacement[i] == 0)
+						{
+							this->displacement[i][0] = newDisplacement[j][0];
+							j++;
+						}
+					}
+
+					this->force = this->stiffness * this->displacement;
+				
+				}
+
+				std::vector<IElement<T>*>& Element()
+				{
+					return this->element;
+				}
+				Matrix<T>& Force()
+				{
+					return this->force;
+				}
+				Matrix<T>& Displacement()
+				{
+					return this->displacement;
+				}
+				Matrix<T>& Stiffness()
+				{
+					return this->stiffness;
+				}
+				std::vector<int>& UnKnowForce()
+				{
+					return this->unKnowForce;
+				}
+				std::vector<int>& UnKnowDisplacement()
+				{
+					return this->unKnowDisplacement;
+				}
+
+				int Length()
+				{
+					//consecutive node number : 1,2,3,4,...
+					int all = 0;
+					for (IElement<T>* e : this->element)
+					{
+						for (int i : e->Node())
+						{
+							if (i > all)
+							{
+								all = i;
+							}
+						}
+					}
+
+					return all*3;
+				}
+			private:
+				std::vector<IElement<T>*> element;
+				Matrix<T> force;
+				Matrix<T> displacement;
+				Matrix<T> stiffness;
+				std::vector<int> unKnowForce;
+				std::vector<int> unKnowDisplacement;
+			protected:
+
+			};
+
+			template<typename T>
 			class CircularSection :public ISection<T>
 			{
 			public:

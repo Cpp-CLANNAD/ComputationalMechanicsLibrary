@@ -27,7 +27,7 @@ namespace ComputationalMechanicsLibrary
 		class ISolver
 		{
 		public:
-			virtual std::vector<IElement<T>>& Element() = 0;
+			virtual std::vector<IElement<T>*>& Element() = 0;
 			virtual Matrix<T>& Force() = 0;
 			virtual Matrix<T>& Displacement() = 0;
 			virtual Matrix<T>& Stiffness() = 0;

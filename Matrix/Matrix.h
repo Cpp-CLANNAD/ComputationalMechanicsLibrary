@@ -170,7 +170,7 @@ namespace ComputationalMechanicsLibrary
 		/// Get the row.
 		/// </summary>
 		/// <returns>row</returns>
-		int getRow()
+		int Row()
 		{
 			return this->row;
 		}
@@ -178,7 +178,7 @@ namespace ComputationalMechanicsLibrary
 		/// Get the Column.
 		/// </summary>
 		/// <returns>column</returns>
-		int getColumn()
+		int Column()
 		{
 			return this->column;
 		}
@@ -186,7 +186,7 @@ namespace ComputationalMechanicsLibrary
 		/// Get the Array which is used to store the Matrix
 		/// </summary>
 		/// <returns>A point, point to the array</returns>
-		T** getArray()
+		T** Array()
 		{
 			return this->array;
 		}
@@ -482,10 +482,10 @@ namespace ComputationalMechanicsLibrary
 			}
 			else if (n == 0)
 			{
-				result =Matrix<T>(a.getRow(), a.getColumn());
-				for (int i = 0; i < result.getRow(); i++)
+				result =Matrix<T>(a.Row(), a.Column());
+				for (int i = 0; i < result.Row(); i++)
 				{
-					result.getArray()[i][i] = 1;
+					result.Array()[i][i] = 1;
 				}
 			}
 			else
@@ -521,11 +521,11 @@ namespace ComputationalMechanicsLibrary
 		friend Matrix<T> operator * (Matrix<T> &b, T n)
 		{
 			Matrix<T> result(b);
-			for (int i = 0; i < b.getRow(); i++)
+			for (int i = 0; i < b.Row(); i++)
 			{
-				for (int j = 0; j < b.getColumn(); j++)
+				for (int j = 0; j < b.Column(); j++)
 				{
-					result.getArray()[i][j] *= n;
+					result.Array()[i][j] *= n;
 				}
 			}
 			return result;
