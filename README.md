@@ -8,3 +8,4 @@ A library about Computational Mechanics
 ## FiniteElementMethod
 ### Core
 ### PlaneRigidFrame
+### SpatialBeam

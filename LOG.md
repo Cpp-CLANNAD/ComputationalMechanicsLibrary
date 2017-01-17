@@ -1,3 +1,21 @@
+# v0.1.3.20170117_Alpha
+do some special changes
+
+## Matrix
+done
+## FiniteElementMethod
+### Core
+doing
+change the interface module
+### PlaneRigidFrame
+element done
+solver done
+now method to solver be a lambda function
+### SpatialBeam
+doing
+element not sure
+solver will improve?
+
 # v0.1.2.20170113_Alpha
 PlaneRigidFrame is sure
 

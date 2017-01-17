@@ -144,64 +144,108 @@ namespace ComputationalMechanicsLibrary
 
 					}
 					
-					//remove known displacements
-					int newLength = 0;
-					for (int f : this->unKnowDisplacement)
-					{
-						if (f == 0)
+					//Cut Matrix: displacement known
+					auto CutMatrix=[&](){
+						//remove known displacements
+						int newLength = 0;
+						for (int f : this->unKnowDisplacement)
 						{
-							newLength++;
-						}
-					}
-
-					Matrix<T> newStiffness(newLength, newLength);
-					Matrix<T> newForce(newLength, 1);
-					for (int i = 0, k = 0; i<newStiffness.Row(); k++, i++)
-					{
-						while (k < this->unKnowDisplacement.size() && this->unKnowDisplacement[k] == 1)
-						{
-							k++;
-						}
-						if (k >= this->unKnowDisplacement.size())
-						{
-							continue;
-						}
-						else
-						{
-							newForce[i][0] = this->force[k][0];
-						}
-
-						for (int j = 0, l = 0; j<newStiffness.Column(); j++, l++)
-						{
-							while (l < this->unKnowDisplacement.size() && this->unKnowDisplacement[l] == 1)
+							if (f == 0)
 							{
-								l++;
+								newLength++;
 							}
-							if (l >= this->unKnowDisplacement.size())
+						}
+
+						Matrix<T> newStiffness(newLength, newLength);
+						Matrix<T> newForce(newLength, 1);
+						for (int i = 0, k = 0; i<newStiffness.Row(); k++, i++)
+						{
+							while (k < this->unKnowDisplacement.size() && this->unKnowDisplacement[k] == 1)
+							{
+								k++;
+							}
+							if (k >= this->unKnowDisplacement.size())
 							{
 								continue;
 							}
 							else
 							{
-								newStiffness[i][j] = this->stiffness[k][l];
+								newForce[i][0] = this->force[k][0];
 							}
 
+							for (int j = 0, l = 0; j<newStiffness.Column(); j++, l++)
+							{
+								while (l < this->unKnowDisplacement.size() && this->unKnowDisplacement[l] == 1)
+								{
+									l++;
+								}
+								if (l >= this->unKnowDisplacement.size())
+								{
+									continue;
+								}
+								else
+								{
+									newStiffness[i][j] = this->stiffness[k][l];
+								}
+
+							}
 						}
-					}
 
-					Matrix<T> newDisplacement = (newStiffness^-1) * newForce;
+						Matrix<T> newDisplacement = (newStiffness^-1) * newForce;
 
-					//full origin matrix
-					for (int i = 0, j = 0; i<length; i++)
-					{
-						if (this->unKnowDisplacement[i] == 0)
+						//full origin matrix
+						for (int i = 0, j = 0; i<length; i++)
 						{
-							this->displacement[i][0] = newDisplacement[j][0];
-							j++;
+							if (this->unKnowDisplacement[i] == 0)
+							{
+								this->displacement[i][0] = newDisplacement[j][0];
+								j++;
+							}
 						}
-					}
 
-					this->force = this->stiffness * this->displacement;
+						this->force = this->stiffness * this->displacement;
+					};
+					//Cut Zero Set One
+					auto CutZero = [&](){
+
+						int newLength = 0;
+						for(int f : this->unKnowDisplacement)
+						{
+							if (f == 0)
+							{
+								newLength++;
+							}
+						}
+
+						Matrix<T> newStiffness(this->stiffness);
+						Matrix<T> newForce(this->force);
+
+						for (int i = 0; i<this->unKnowDisplacement.size(); i++)
+						{
+							if (this->unKnowDisplacement[i] != 0)
+							{
+								newStiffness[i][i] = 1;
+								newForce[i][0] = this->displacement[i][0];
+								for (int j = 0; j<i; j++)
+								{
+									newStiffness[j][i] = 0;
+									newStiffness[i][j] = 0;
+								}
+								for (int j = i + 1; j<length; j++)
+								{
+									newStiffness[j][i] = 0;
+									newStiffness[i][j] = 0;
+								}
+							}
+						}
+
+						this->displacement = (newStiffness ^ -1) * newForce;
+
+						this->force = this->stiffness * this->displacement;
+					};
+					
+					//use it or not
+					CutZero();
 				
 				}
 
@@ -300,10 +344,9 @@ namespace ComputationalMechanicsLibrary
 			class PlaneRigidFrameMaterial:public IMaterial<T>
 			{
 			public:
-				PlaneRigidFrameMaterial(T _elasticityModulus, T _poissonRatio)
+				PlaneRigidFrameMaterial(T _elasticityModulus)
 				{
 					this->elasticityModulus = _elasticityModulus;
-					this->poissonRatio = _poissonRatio;
 				}
 
 				T ElasticityModulus()
@@ -312,11 +355,14 @@ namespace ComputationalMechanicsLibrary
 				}
 				T PoissonRatio()
 				{
-					return this->poissonRatio;
+					return (T)0;
+				}
+				T Density()
+				{
+					return (T)0;
 				}
 			private:
 				T elasticityModulus;
-				T poissonRatio;
 			protected:
 
 			};
