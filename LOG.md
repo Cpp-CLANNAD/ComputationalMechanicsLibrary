@@ -1,3 +1,19 @@
+# v0.1.4.20170119_Alpha
+do some special changes
+
+## Matrix
+done
+## FiniteElementMethod
+### Core
+doing
+change the interface module
+### PlaneRigidFrame
+done
+### SpatialBeam
+doing
+element is redundant
+solver Newmark, NodeIteration are sure
+
 # v0.1.3.20170117_Alpha
 do some special changes
 

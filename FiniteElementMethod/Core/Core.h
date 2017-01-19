@@ -86,6 +86,8 @@ namespace ComputationalMechanicsLibrary
 			virtual std::vector<int>& UnKnowDisplacement() = 0;
 			virtual std::vector<int>& UnKnowVelocity() = 0;
 			virtual std::vector<int>& UnKnowAcceleration() = 0;
+
+			virtual void DynamicReset() = 0;
 		private:
 
 		protected:
@@ -111,6 +113,8 @@ namespace ComputationalMechanicsLibrary
 			virtual std::vector<int>& UnKnowDisplacement() = 0;
 			virtual std::vector<int>& UnKnowVelocity() = 0;
 			virtual std::vector<int>& UnKnowAcceleration() = 0;
+
+			virtual T TimeInterval() = 0;
 		private:
 
 		protected:

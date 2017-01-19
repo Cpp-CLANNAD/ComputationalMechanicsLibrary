@@ -93,6 +93,11 @@ namespace ComputationalMechanicsLibrary
 				{
 					return this->unKnowAcceleration;
 				}
+			
+				void DynamicReset()
+				{
+					this->CalculateStiffness();
+				}
 			private:
 				std::vector<int> node;
 
@@ -240,7 +245,7 @@ namespace ComputationalMechanicsLibrary
 						int ni = ei, nj = ei;
 						for (int i = 0; i < e->Stiffness().Row(); i++)
 						{
-							if (i >= 3)
+							if (i >= 6)
 							{
 								ni = ej;
 							}
@@ -249,19 +254,19 @@ namespace ComputationalMechanicsLibrary
 								ni = ei;
 							}
 
-							this->force[0][(ni - 1) * 3 + i % 3][0] += e->Force()[i][0];
-							this->unKnowForce[(ni - 1) * 3 + i % 3] = e->UnKnowForce()[i];
-							this->displacement[0][(ni - 1) * 3 + i % 3][0] += e->Displacement()[i][0];
-							this->unKnowDisplacement[(ni - 1) * 3 + i % 3] = e->UnKnowDisplacement()[i];
-							this->velocity[0][(ni - 1) * 3 + i % 3][0] += e->Velocity()[i][0];
-							this->unKnowVelocity[(ni - 1) * 3 + i % 3] = e->UnKnowVelocity()[i];
-							this->acceleration[0][(ni - 1) * 3 + i % 3][0] += e->Acceleration()[i][0];
-							this->unKnowAcceleration[(ni - 1) * 3 + i % 3] = e->UnKnowAcceleration()[i];
+							this->force[0][(ni - 1) * 6 + i % 6][0] += e->Force()[i][0];
+							this->unKnowForce[(ni - 1) * 6 + i % 6] = e->UnKnowForce()[i];
+							this->displacement[0][(ni - 1) * 6 + i % 6][0] += e->Displacement()[i][0];
+							this->unKnowDisplacement[(ni - 1) * 6 + i % 6] = e->UnKnowDisplacement()[i];
+							this->velocity[0][(ni - 1) * 6 + i % 6][0] += e->Velocity()[i][0];
+							this->unKnowVelocity[(ni - 1) * 6 + i % 6] = e->UnKnowVelocity()[i];
+							this->acceleration[0][(ni - 1) * 6 + i % 6][0] += e->Acceleration()[i][0];
+							this->unKnowAcceleration[(ni - 1) * 6 + i % 6] = e->UnKnowAcceleration()[i];
 
 
 							for (int j = 0; j < e->Stiffness().Column(); j++)
 							{
-								if (j >= 3)
+								if (j >= 6)
 								{
 									nj = ej;
 								}
@@ -270,15 +275,71 @@ namespace ComputationalMechanicsLibrary
 									nj = ei;
 								}
 
-								this->mass[(ni - 1) * 3 + i % 3][(nj - 1) * 3 + j % 3] += e->Mass()[i][j];
-								this->damp[(ni - 1) * 3 + i % 3][(nj - 1) * 3 + j % 3] += e->Damp()[i][j];
-								this->stiffness[(ni - 1) * 3 + i % 3][(nj - 1) * 3 + j % 3] += e->Stiffness()[i][j];
+								this->mass[(ni - 1) * 6 + i % 6][(nj - 1) * 6 + j % 6] += e->Mass()[i][j];
+								//this->damp[(ni - 1) * 6 + i % 6][(nj - 1) * 6 + j % 6] += e->Damp()[i][j];
+								this->stiffness[(ni - 1) * 6 + i % 6][(nj - 1) * 6 + j % 6] += e->Stiffness()[i][j];
 							}
 						}
 
 
 					}
 
+					for (int i = 0; i < this->force.size() - 1; i++)
+					{
+						this->Newmark(this->stiffness, this->mass, this->damp, this->displacement[i], this->velocity[i], this->acceleration[i], this->displacement[i + 1], this->velocity[i + 1], this->acceleration[i + 1], this->force[i + 1]);
+
+						for (IDynamicElement<T>* e : this->element)
+						{
+							int ei = e->Node()[0];
+							int ej = e->Node()[1];
+
+							int ni = ei, nj = ei;
+							for (int i = 0; i < e->Stiffness().Row(); i++)
+							{
+								if (i >= 6)
+								{
+									ni = ej;
+								}
+								else
+								{
+									ni = ei;
+								}
+
+								e->Displacement()[i][0] = this->displacement[0][(ni - 1) * 6 + i % 6][0];
+							}
+							//ReCalculate Stiffness nonliner
+							e->DynamicReset();
+
+							//full Stiffness
+							this->stiffness = Matrix<T>(length, length);
+							int ni = ei, nj = ei;
+							for (int i = 0; i < e->Stiffness().Row(); i++)
+							{
+								if (i >= 6)
+								{
+									ni = ej;
+								}
+								else
+								{
+									ni = ei;
+								}
+
+								for (int j = 0; j < e->Stiffness().Column(); j++)
+								{
+									if (j >= 6)
+									{
+										nj = ej;
+									}
+									else
+									{
+										nj = ei;
+									}
+									this->stiffness[(ni - 1) * 6 + i % 6][(nj - 1) * 6 + j % 6] += e->Stiffness()[i][j];
+								}
+							}
+
+						}
+					}
 				}
 
 				std::vector<IDynamicElement<T>*>& Element()
@@ -333,6 +394,11 @@ namespace ComputationalMechanicsLibrary
 					return this->unKnowAcceleration;
 				}
 
+				T TimeInterval()
+				{
+					return this->timeInterval;
+				}
+
 				int Length()
 				{
 					//consecutive node number : 1,2,3,4,...
@@ -367,6 +433,48 @@ namespace ComputationalMechanicsLibrary
 				std::vector<int> unKnowVelocity;
 				std::vector<int> unKnowAcceleration;
 
+				T timeInterval;
+				/// <summary>
+				/// Nodes the iteration.
+				/// kd=f
+				/// </summary>
+				/// <param name="K">The k.</param>
+				/// <param name="d">The d.</param>
+				/// <param name="F">The f.</param>
+				void NodeIteration(Matrix<T>& K, Matrix<T>& d, Matrix<T>& F)
+				{
+					//Three diagonal matrix??
+					d[1] = (F[0] - d[0] * k[0][0]) / k[0][1];
+					for (int i = 2; i < d.Row(); i++)
+					{
+						d[i] = (F[i - 1] - d[i - 2] * K[i][i - 2] - d[i - 1] * K[i][i - 1]) / k[i - 1][i];
+					}
+				}
+				void Newmark(Matrix<T>& K, Matrix<T>& M, Matrix<T>& C, Matrix<T>& d, Matrix<T>& v, Matrix<T>& a,Matrix<T>& dnext, Matrix<T>& vnext, Matrix<T>& anext , Matrix<T>& Fnext)
+				{
+					T ¦¤t = this->timeInterval;
+					T ¦Ç = 1 / 4;
+					T ¦Ä = 1 / 2;
+					T c[6] = { 1 / ¦Ç / ¦¤t / ¦¤t ,¦Ä / ¦Ç / ¦¤t / ¦¤t ,1 / ¦Ç / ¦¤t ,1 / 2 / ¦Ç - 1,¦Ä / ¦Ç - 1, ¦¤t*(¦Ä / 2 / ¦Ç - 1) };
+					Matrix<T> effectiveK = K + c[0] * M + c[1] * C;
+					Matrix<T> effectiveFnext = Fnext + M*(c[0] * d + c[2] * v + c[3] * a) + C*(c[1] * d + c[4] * v + c[5] * a);
+					
+					//d(t+¦¤t),v(t+¦¤t),a(t+¦¤t)
+					this->NodeIteration(effectiveK, dnext, Fnext);
+					anext = c[0] * (dnext - d) - c[2] * v - c[3] * a;
+					vnext = v + ((1 - ¦Ä)*a + ¦Ä*anext)*¦¤t;
+				}
+
+				void CalculateDamp()
+				{
+					T ¦Ø1, ¦Ø2;
+					T ¦Î1, ¦Î2;
+
+					T ¦Õ = 2 * (¦Î1*¦Ø2 - ¦Î2*¦Ø1) / (¦Ø2*¦Ø2 - ¦Ø1*¦Ø1);
+					T ¦Æ = ¦Ø1*¦Ø2*¦Õ;
+
+					this->damp = ¦Æ*this->mass + ¦Õ*this->stiffness;
+				}
 			protected:
 
 			};
