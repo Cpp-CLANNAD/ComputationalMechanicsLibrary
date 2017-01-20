@@ -1,3 +1,23 @@
+# v0.1.5.20170120_Alpha
+demo, just can use.
+need packing those set up operations.
+just like preprocessing
+
+## Matrix
+done
+## FiniteElementMethod
+### Core
+doing
+delete the dynamic's interface with normal element and solver
+need rebuild
+### PlaneRigidFrame
+done
+### SpatialBeam
+doing
+element is redundant
+solver is sure
+
+
 # v0.1.4.20170119_Alpha
 do some special changes
 

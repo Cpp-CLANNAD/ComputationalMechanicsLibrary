@@ -344,7 +344,7 @@ namespace ComputationalMechanicsLibrary
 			{
 				throw std::exception("dimensions not equal");
 			}
-			Matrix<T> result(this);
+			Matrix<T> result(*this);
 			for (int i = 0; i < result.row; i++)
 			{
 				for (int j = 0; j < result.column; j++)
