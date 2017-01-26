@@ -1,6 +1,5 @@
 #pragma once
 #include "../Core/Core.h"
-#define M_PI 3.14159265358979323846
 
 namespace ComputationalMechanicsLibrary
 {
@@ -126,9 +125,9 @@ namespace ComputationalMechanicsLibrary
 				{
 					T dix = this->displacement[0][0];
 					T djx = this->displacement[6][0];
-					T ¦Èix = this->displacement[3][0];
-					T ¦Èjx = this->displacement[9][0];
-					T ¦Í = this->poissonRatio;
+					T ï¿½ï¿½ix = this->displacement[3][0];
+					T ï¿½ï¿½jx = this->displacement[9][0];
+					T ï¿½ï¿½ = this->poissonRatio;
 					T G = this->shearModulus;
 					T E = this->elasticityModulus;
 					T A = this->sectionArea;
@@ -167,19 +166,19 @@ namespace ComputationalMechanicsLibrary
 						{l / 10, 0, 0, 0, 0, -l*l / 30, -l / 10, 0, 0, 0, 0, 2 * l*l / 15}};
 					KNB = E*A*(djx - dix) / l / l*KNB;
 
-					Matrix<T> KNT = {{0, 0, 0, ¦Í / 2, 0, 0, 0, 0, 0, -¦Í / 2, 0, 0},
+					Matrix<T> KNT = {{0, 0, 0, ï¿½ï¿½ / 2, 0, 0, 0, 0, 0, -ï¿½ï¿½ / 2, 0, 0},
 						{0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 1, 0},
 						{0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 1},
 						{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 						{0, -1, 0, 0, 0, 0, 0, 1, 0, 0, 0, -l / 2},
 						{0, 0, -1, 0, 0, 0, 0, 0, 1, 0, l / 2, 0},
-						{0, 0, 0, -¦Í / 2, 0, 0, 0, 0, 0, ¦Í / 2, 0, 0},
+						{0, 0, 0, -ï¿½ï¿½ / 2, 0, 0, 0, 0, 0, ï¿½ï¿½ / 2, 0, 0},
 						{0, 0, 0, 0, 1, 0, 0, 0, 0, 0, -1, 0},
 						{0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, -1},
 						{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 						{0, 1, 0, 0, 0, l / 2, 0, -1, 0, 0, 0, 0},
-						{0, 0, 1, 0, -¦Í / 2, 0, 0, 0, -1, 0, 0, 0}};
-					KNT = (1 + 2 * ¦Í)*G*Ix*(¦Èjx - ¦Èix) / l / l * KNT;
+						{0, 0, 1, 0, -ï¿½ï¿½ / 2, 0, 0, 0, -1, 0, 0, 0}};
+					KNT = (1 + 2 * ï¿½ï¿½)*G*Ix*(ï¿½ï¿½jx - ï¿½ï¿½ix) / l / l * KNT;
 
 					this->stiffness = Kl + KNB + KNT;
 				}
@@ -402,29 +401,29 @@ namespace ComputationalMechanicsLibrary
 				}
 				void Newmark(Matrix<T>& K, Matrix<T>& M, Matrix<T>& C, Matrix<T>& d, Matrix<T>& v, Matrix<T>& a,Matrix<T>& dnext, Matrix<T>& vnext, Matrix<T>& anext , Matrix<T>& Fnext)
 				{
-					T ¦¤t = this->timeInterval;
-					T ¦Ç = 1.0 / 4;
-					T ¦Ä = 1.0 / 2;
-					T c[6] = { 1 / ¦Ç / ¦¤t / ¦¤t ,¦Ä / ¦Ç / ¦¤t / ¦¤t ,1 / ¦Ç / ¦¤t ,1 / 2 / ¦Ç - 1,¦Ä / ¦Ç - 1, ¦¤t*(¦Ä / 2 / ¦Ç - 1) };
+					T DELTAt = this->timeInterval;
+					T eta = 1.0 / 4;
+					T delta = 1.0 / 2;
+					T c[6] = { 1 / eta / DELTAt / DELTAt ,delta / eta / DELTAt / DELTAt ,1 / eta / DELTAt ,1 / 2 / eta - 1,delta / eta - 1, DELTAt*(delta / 2 / eta - 1) };
 					Matrix<T> effectiveK = K + c[0] * M + c[1] * C;
 					Matrix<T> effectiveFnext = Fnext + M*(c[0] * d + c[2] * v + c[3] * a) + C*(c[1] * d + c[4] * v + c[5] * a);
 					
-					//d(t+¦¤t),v(t+¦¤t),a(t+¦¤t)
+					//d(t+DELTAt),v(t+DELTAt),a(t+DELTAt)
 					//this->NodeIteration(effectiveK, dnext, Fnext);
 					dnext = effectiveK.Inverse()*Fnext;
 					anext = c[0] * (dnext - d) - c[2] * v - c[3] * a;
-					vnext = v + ((1 - ¦Ä)*a + ¦Ä*anext)*¦¤t;
+					vnext = v + ((1 - delta)*a + delta*anext)*DELTAt;
 				}
 
 				void CalculateDamp()
 				{
-					T ¦Ø1=1, ¦Ø2=2;
-					T ¦Î1=1, ¦Î2=2;
+					T omega1=1, omega2=2;
+					T zeta1=1, zeta2=2;
 
-					T ¦Õ = 2 * (¦Î1*¦Ø2 - ¦Î2*¦Ø1) / (¦Ø2*¦Ø2 - ¦Ø1*¦Ø1);
-					T ¦Æ = ¦Ø1*¦Ø2*¦Õ;
+					T phi = 2 * (zeta1*omega2 - zeta2*omega1) / (omega2*omega2 - omega1*omega1);
+					T xi = omega1*omega2*phi;
 
-					this->damp = ¦Æ*this->mass + ¦Õ*this->stiffness;
+					this->damp = xi*this->mass + phi*this->stiffness;
 				}
 			protected:
 

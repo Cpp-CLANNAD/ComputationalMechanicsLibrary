@@ -1,3 +1,20 @@
+# v0.1.6.20170126_Alpha
+fix some bug
+need preprocessing
+
+## Matrix
+done
+fix the Determinat() use
+## FiniteElementMethod
+### Core
+doing
+define PI
+### PlaneRigidFrame
+done
+### SpatialBeam
+doing
+can be used
+
 # v0.1.5.20170120_Alpha
 demo, just can use.
 need packing those set up operations.
@@ -16,7 +33,6 @@ done
 doing
 element is redundant
 solver is sure
-
 
 # v0.1.4.20170119_Alpha
 do some special changes

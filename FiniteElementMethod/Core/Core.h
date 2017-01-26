@@ -2,6 +2,10 @@
 
 #include "../../Matrix/Matrix.h"
 #include <array>
+#ifdef M_PI
+#else
+#define M_PI 3.14159265358979323846
+#endif
 
 namespace ComputationalMechanicsLibrary
 {

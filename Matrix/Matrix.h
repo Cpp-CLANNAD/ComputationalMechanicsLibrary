@@ -304,7 +304,7 @@ namespace ComputationalMechanicsLibrary
 							temp.array[x][y] = this->array[x < i ? x : x + 1][y < j ? y : y + 1];
 						}
 					}
-					result.array[j][i] = ((i + j) % 2 == 0 ? 1 : -1) * temp.Determinant();
+					result.array[j][i] = ((i + j) % 2 == 0 ? 1 : -1) * temp.Determinat();
 				}
 			}
 
