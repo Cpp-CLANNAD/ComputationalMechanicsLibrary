@@ -65,7 +65,7 @@ namespace ComputationalMechanicsLibrary
 		/// <param name="_column">The column.</param>
 		Matrix(int _row, int _column)
 		{
-			this->array = new T*[_row];
+            this->array = new T*[_row];
 			this->array[0] = new T[_row*_column]{ 0 };
 			for (int i = 1; i < _row; i++)
 			{
@@ -157,6 +157,22 @@ namespace ComputationalMechanicsLibrary
 			this->ClearArray();
 		}
 
+        void SetUnit(int _row)
+        {
+            this->destory();
+            this->array = new T*[_row];
+            this->array[0] = new T[_row*_row]{0};
+            for (int j = 0; j < _row; j++)
+            {
+                this->array[0][j] = ((T*)arr)[0 * _row + j];
+            }
+            for(int i=0;i<_row;i++)
+            {
+                this->array[i][i]=1;
+            }
+            this->row = _row;
+            this->column = _row;
+        }
 
 		/// <summary>
 		/// Check whether this matrix is Square matrix
@@ -256,7 +272,7 @@ namespace ComputationalMechanicsLibrary
 
 				return result;
 			}
-			catch (...)
+            catch (std::exception &e)
 			{
 				throw;
 			}
@@ -283,20 +299,20 @@ namespace ComputationalMechanicsLibrary
 		/// <returns>this matrix's adjoint matrix</returns>
 		Matrix<T> AdjointMatrix()
 		{
-			//½×Êı
+			//é˜¶æ•°
 			int n = this->CheckSquare() ? this->row : throw std::exception("not a square");
-			//Ë³±ã°ÑÒì³£Å×ÁË³öÈ¥
-			//ÖÆ×÷Ò»¸ö°éËæ¾ØÕó´óĞ¡µÄ¾ØÕó
+			//é¡ºä¾¿æŠŠå¼‚å¸¸æŠ›äº†å‡ºå»
+			//åˆ¶ä½œä¸€ä¸ªä¼´éšçŸ©é˜µå¤§å°çš„çŸ©é˜µ
 			Matrix<T> result(n, n);
 
-			//´æ´¢´úÊıÓà×ÓÊ½µÄ¾ØÕó£¨ĞĞ¡¢ÁĞÊı¶¼±ÈÔ­¾ØÕóÉÙ1£©
+			//å­˜å‚¨ä»£æ•°ä½™å­å¼çš„çŸ©é˜µï¼ˆè¡Œã€åˆ—æ•°éƒ½æ¯”åŸçŸ©é˜µå°‘1ï¼‰
 			Matrix<T> temp(n - 1, n - 1);
-			//Éú³É°éËæ¾ØÕó
+			//ç”Ÿæˆä¼´éšçŸ©é˜µ
 			for (int i = 0; i < n; i++)
 			{
 				for (int j = 0; j < n; j++)
 				{
-					//Éú³É´úÊıÓà×ÓÊ½
+					//ç”Ÿæˆä»£æ•°ä½™å­å¼
 					for (int x = 0; x < n-1; x++)
 					{
 						for (int y = 0; y < n-1; y++)
@@ -593,10 +609,10 @@ namespace ComputationalMechanicsLibrary
 		/// Fulls the array by a existed matrix
 		/// </summary>
 		/// <param name="a">existed matrix</param>
-		void FullArray(const Matrix &a)
+        void FullArray(const Matrix<T> &a)
 		{
 			this->ClearArray();
-			this->array = new T*[a.row];
+            this->array = new T*[a.row];
 			this->array[0] = new T[(a.row)*(a.column)];
 			for (int j = 0; j < a.column; j++)
 			{
@@ -659,9 +675,9 @@ namespace ComputationalMechanicsLibrary
 		/// <returns>this matrix's inverse matrix</returns>
 		Matrix<T> InverseGaussJordan()
 		{
-			//½×Êı
+			//é˜¶æ•°
 			int n = this->CheckSquare() ? this->row : throw std::exception("not a square");
-			//Ë³±ã°ÑÒì³£Å×ÁË³öÈ¥
+			//é¡ºä¾¿æŠŠå¼‚å¸¸æŠ›äº†å‡ºå»
 
 			Matrix<T> result(*this);
 			int* jr = new int[this->row];
@@ -671,7 +687,7 @@ namespace ComputationalMechanicsLibrary
 
 			for (int k = 0; k < result.row; k++)
 			{
-				//È«Ñ¡Ö÷Ôª
+				//å…¨é€‰ä¸»å…ƒ
 				max = 0;
 				jr[k] = k;
 				jc[k] = k;
@@ -690,13 +706,13 @@ namespace ComputationalMechanicsLibrary
 				}
 
 				if (max < 1.0e-12)
-				{   //! ÎŞÄæ¾ØÕó
+				{   //! æ— é€†çŸ©é˜µ
 					delete[] jr;
 					delete[] jc;
 					throw std::exception("determinat is 0");
 				}
 
-				//½»»»
+				//äº¤æ¢
 				if (jr[k] != k)
 				{
 					result.SwapRowSelf(k, jr[k]);
@@ -738,7 +754,7 @@ namespace ComputationalMechanicsLibrary
 
 			}
 
-			//»Ö¸´
+			//æ¢å¤
 			for (int k = result.row - 1; k >= 0; k--)
 			{
 				if (jc[k] != k)
@@ -764,9 +780,9 @@ namespace ComputationalMechanicsLibrary
 		/// </returns>
 		T DeterminatGaussJordan()
 		{
-			//½×Êı
+			//é˜¶æ•°
 			int n = this->CheckSquare() ? this->row : throw std::exception("not a square");			
-			//Ë³±ã°ÑÒì³£Å×ÁË³öÈ¥
+			//é¡ºä¾¿æŠŠå¼‚å¸¸æŠ›äº†å‡ºå»
 			T resultD = (T)1;
 
 
@@ -778,7 +794,7 @@ namespace ComputationalMechanicsLibrary
 
 			for (int k = 0; k < result.row; k++)
 			{
-				//È«Ñ¡Ö÷Ôª
+				//å…¨é€‰ä¸»å…ƒ
 				max = 0;
 				jr[k] = k;
 				jc[k] = k;
@@ -797,13 +813,13 @@ namespace ComputationalMechanicsLibrary
 				}
 
 				if (max < 1.0e-12)
-				{   //! ÎŞÄæ¾ØÕó
+				{   //! æ— é€†çŸ©é˜µ
 					delete[] jr;
 					delete[] jc;
 					return (T)0;
 				}
 
-				//½»»»
+				//äº¤æ¢
 				if (jr[k] != k)
 				{
 					resultD *= (T)-1;
@@ -848,7 +864,7 @@ namespace ComputationalMechanicsLibrary
 
 			}
 
-			//»Ö¸´
+			//æ¢å¤
 			for (int k = result.row - 1; k >= 0; k--)
 			{
 				if (jc[k] != k)

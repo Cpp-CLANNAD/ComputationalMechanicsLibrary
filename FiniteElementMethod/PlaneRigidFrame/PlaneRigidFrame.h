@@ -244,7 +244,7 @@ namespace ComputationalMechanicsLibrary
 					};
 					
 					//use it or not
-					CutZero();
+                    ComputationalMechanicsLibrary::FiniteElementMethod::CutZeroAddOne(this->stiffness,this->displacement,this->force,this->unKnowDisplacement,this->unKnowForce,length);
 				
 				}
 

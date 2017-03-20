@@ -1,3 +1,18 @@
+# v0.2.0.20170320_Alpha
+fix lots of bug
+preprocessing done
+
+cancel some inherit
+need Restructure
+
+## FiniteElementMethod
+### Core
+add a function to calculate Natural Frequency by Jacobi
+move Cut Zero Add One to core
+
+### SpatialBeam
+big Improvement
+
 # v0.1.6.20170126_Alpha
 fix some bug
 need preprocessing
