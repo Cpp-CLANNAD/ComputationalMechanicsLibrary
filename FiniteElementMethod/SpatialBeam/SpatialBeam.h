@@ -44,7 +44,7 @@ namespace ComputationalMechanicsLibrary
 					this->unKnowVelocity = _unKnowVelocity;
 					this->unKnowAcceleration = _unKnowAcceleration;
 
-					this->DynamicResetFunction = [](SpatialBeamElement<T> *e, int t) {};
+					this->DynamicResetFunctions;
 
 					this->CalculateTransformation();
 					this->CalculateMass();
@@ -134,7 +134,8 @@ namespace ComputationalMechanicsLibrary
 					return this->azimuthAngle;
 				}
 
-				std::function<void(SpatialBeamElement<T>*,int t)> DynamicResetFunction;
+
+				std::vector<std::function<void(SpatialBeamElement<T>*,int t)>> DynamicResetFunctions;
 
 				void DynamicReset(DampType type, int t)
 				{
@@ -164,7 +165,11 @@ namespace ComputationalMechanicsLibrary
 					this->CalculateStiffness();
 					this->CalculateDamp(type);
 
-					this->DynamicResetFunction(this,t);
+					for (auto DynamicResetFunction : this->DynamicResetFunctions)
+					{
+						DynamicResetFunction(this, t);
+					}
+					
 					/*
 					this->force[t] = this->transformation.Transport()*this->force[t];
 					this->displacement[t] = this->transformation.Transport()*this->displacement[t];
@@ -303,7 +308,7 @@ namespace ComputationalMechanicsLibrary
 					{ 0, 0, 1.0, 0, -ν / 2, 0, 0, 0, -1.0, 0, 0, 0 } };
 					KNT = (1 + 2 * ν)*G*Ix*(θjx - θix) / l / l * KNT;
 
-					this->stiffness = Kl /*+ KNB + KNT*/;
+					this->stiffness = Kl + KNB + KNT;
 				}
 
 				void CalculateDamp(DampType type = DampType::Rayleigh)
@@ -476,7 +481,7 @@ namespace ComputationalMechanicsLibrary
 					for (int t = 0; t < this->force.size() - 1; t++)
 					{
 						this->Newmark(this->stiffness, this->mass, this->damp,
-							this->displacement[t], this->velocity[t], this->acceleration[t], this->displacement[t + 1], this->velocity[t + 1], this->acceleration[t + 1], this->force[t + 1],
+							this->displacement[t], this->velocity[t], this->acceleration[t], this->force[t], this->displacement[t + 1], this->velocity[t + 1], this->acceleration[t + 1], this->force[t + 1],
 							this->unKnowDisplacement[t], this->unKnowVelocity[t], this->unKnowAcceleration[t], this->unKnowDisplacement[t + 1], this->unKnowVelocity[t + 1], this->unKnowAcceleration[t + 1], this->unKnowForce[t + 1]);
 						
 						WriteMatrixToCSV("afterNewmarkV.csv",this->velocity[t+ 1]);
@@ -700,8 +705,8 @@ namespace ComputationalMechanicsLibrary
 						for (int j = 0; j < 6; j++)
 						{
 							K00[i][j] = K[i][j];
-							K01[i][j] = K[i + 6][j];
-							K10[i][j] = K[i][j + 6];
+							K01[i][j] = K[i][j + 6];
+							K10[i][j] = K[i + 6][j];
 							K11[i][j] = K[i + 6][j + 6];
 							K12[i][j] = K[i + 6][j + 12];
 							K21[i][j] = K[i + 12][j + 6];
@@ -732,12 +737,12 @@ namespace ComputationalMechanicsLibrary
 							for (int j = 0; j < 6; j++)
 							{
 								K00[i][j] = K[(t - 2) * 6 + i][(t - 2) * 6 + j];
-								K01[i][j] = K[(t - 2) * 6 + i + 6][(t - 2) * 6 + j];
-								K10[i][j] = K[(t - 2) * 6 + i][(t - 2) * 6 + j + 6];
-								K11[i][j] = K[(t - 2) * 6 + i + 6][(t - 2) * 6 + j + 6];
-								K12[i][j] = K[(t - 2) * 6 + i + 6][(t - 2) * 6 + j + 12];
-								K21[i][j] = K[(t - 2) * 6 + i + 12][(t - 2) * 6 + j + 6];
-								K22[i][j] = K[(t - 2) * 6 + i + 12][(t - 2) * 6 + j + 12];
+								K01[i][j] = K[(t - 2) * 6 + i][(t - 1) * 6 + j];
+								K10[i][j] = K[(t - 1) * 6 + i][(t - 2) * 6 + j];
+								K11[i][j] = K[(t - 1) * 6 + i][(t - 1) * 6 + j];
+								K12[i][j] = K[(t - 1) * 6 + i][t * 6 + j];
+								K21[i][j] = K[t * 6 + i][(t - 1) * 6 + j];
+								K22[i][j] = K[t * 6 + i][t * 6 + j];
 							}
 						}
 
@@ -750,7 +755,7 @@ namespace ComputationalMechanicsLibrary
 					}
 				}
 				void Newmark(Matrix<T>& K, Matrix<T>& M, Matrix<T>& C,
-					Matrix<T>& d, Matrix<T>& v, Matrix<T>& a, Matrix<T>& dnext, Matrix<T>& vnext, Matrix<T>& anext, Matrix<T>& Fnext,
+					Matrix<T>& d, Matrix<T>& v, Matrix<T>& a,Matrix<T>& F, Matrix<T>& dnext, Matrix<T>& vnext, Matrix<T>& anext, Matrix<T>& Fnext,
 					std::vector<int>& unKnowD, std::vector<int>& unKnowV, std::vector<int>& unKnowA, std::vector<int>& unKnowDnext, std::vector<int>& unKnowVnext, std::vector<int>& unKnowAnext, std::vector<int>& unKnowFnext)
 				{
 					T DELTAt = this->timeInterval;
@@ -758,38 +763,58 @@ namespace ComputationalMechanicsLibrary
 					T delta = 0.5;
 					T c[8] = { 1.0 / eta / DELTAt / DELTAt ,delta / eta / DELTAt ,1.0 / eta / DELTAt ,1.0 / 2 / eta - 1,delta / eta - 1, DELTAt*(delta / 2 / eta - 1), DELTAt*(1 - delta),delta*DELTAt };
 					Matrix<T> effectiveK = K + c[0] * M + c[1] * C;
-					Matrix<T> effectiveFnext = Fnext + M*(c[0] * d + c[2] * v + c[3] * a) + C*(c[1] * d + c[4] * v + c[5] * a);
+					Matrix<T> effectiveFnext = Fnext + M*(c[0] * d + c[2] * v + c[4] * a) + C*(c[1] * d + c[3] * v + c[5] * a);
 
 					//d(t+DELTAt),v(t+DELTAt),a(t+DELTAt)
 					//this->NodeIteration(effectiveK, dnext, effectiveFnext);
 
 					//CutZeroAddOne(effectiveK,dnext,effectiveFnext,unKnowDnext,unKnowFnext,this->Length());
 					//WriteMatrixToCSV("M.csv", M);
-					//WriteMatrixToCSV("eK.csv", effectiveK);
-					//WriteMatrixToCSV("eFn.csv", effectiveFnext);
+					WriteMatrixToCSV("eK.csv", effectiveK);
+					WriteMatrixToCSV("eFn.csv", effectiveFnext);
 					//WriteMatrixToCSV("eKi.csv", effectiveK.Inverse());
 					//dnext = effectiveK.Inverse()*effectiveFnext;
 
 					this->NodeIteration(effectiveK, dnext, effectiveFnext);
 
-					Matrix<T> EM(anext.Row(), anext.Row());
-					for (int i = 0; i<anext.Row(); i++)
-					{
-						EM[i][i] = (T)1;
-					}
+					Matrix<T> effectiveKv = 1.0 / delta / DELTAt*M + C;
+					Matrix<T> effectiveFnextv = Fnext + M*(1.0 / delta/DELTAt*v + (1.0 / delta + 1)*a) - K*dnext;
 
-					Matrix<T> temp(d.Row(), d.Column());
+					WriteMatrixToCSV("effKv.csv", effectiveKv);
+					WriteMatrixToCSV("effFv.csv", effectiveFnextv);
+
+					this->NodeIteration(effectiveKv, vnext, effectiveFnextv);
+
+					//WriteMatrixToCSV("effVnext.csv", vnext);
+
+					Matrix<T> effectiveKa = M;
+					Matrix<T> effectiveFnexta = F - C*vnext - K*dnext;
+
+					WriteMatrixToCSV("effKa.csv", effectiveKa);
+					WriteMatrixToCSV("effFa.csv", effectiveFnexta);
+
+					this->NodeIteration(effectiveKa, anext, effectiveFnexta);
+
+					/*
+					if (this->ifFirstNewMark == true)
+					{
+						v = 1 / DELTAt*(dnext - d);
+						a = (M^-1) * (F - C*v - K*d);
+					}
+					*/
 
 					//WriteMatrixToCSV("anNewmarkDnext.csv", dnext);
 					//temp=c[0] * (dnext - d) - c[2] * v - c[3] * a;
 					//CutZeroAddOne(EM,anext,temp,unKnowAnext,std::vector<int>(this->Length(),1),this->Length());
-					anext = c[0] * (dnext - d) - c[2] * v - c[3] * a;
+					//////////////////////////anext = c[0] * (dnext - d) - c[2] * v - c[3] * a;
 					//temp=v + ((1 - delta)*a + delta*anext)*DELTAt;
 					//CutZeroAddOne(EM,vnext,temp,unKnowVnext,std::vector<int>(this->Length(),1),this->Length());
-					vnext = v + c[6] * a + c[7] * anext;
+					/////////////////////////vnext = v + c[6] * a + c[7] * anext;
 					//temp=M*anext+C*vnext+K*dnext;
 					//CutZeroAddOne(EM,Fnext,temp,unKnowFnext,std::vector<int>(this->Length(),1),this->Length());
 					//Fnext=M*anext+C*vnext+K*dnext;
+
+					this->ifFirstNewMark = false;
 				}
 
 				void CalculateDamp(DampType type)
@@ -837,6 +862,7 @@ namespace ComputationalMechanicsLibrary
 					this->damp = xi*this->mass + phi*this->stiffness;
 				}
 
+				bool ifFirstNewMark = true;
 			protected:
 
 			};
@@ -945,14 +971,16 @@ namespace ComputationalMechanicsLibrary
 				T dynamicViscosity;
 				T densityWellFluid;
 				T wellDiameter;
+				T timeInterval;
 
 				Matrix<T> gravitySuckerRod;
 
-				SpatialBeamPreprocessor(T _wellDiameter,T _densityWellFluid,T _dynamicViscosity)
+				SpatialBeamPreprocessor(T _wellDiameter,T _densityWellFluid,T _dynamicViscosity,T _timeInterval)
 				{
 					this->wellDiameter = _wellDiameter;
 					this->densityWellFluid = _densityWellFluid;
 					this->dynamicViscosity = _dynamicViscosity;
+					this->timeInterval = _timeInterval;
 				}
 
 				//浮重：Gravity&flo
@@ -972,7 +1000,7 @@ namespace ComputationalMechanicsLibrary
 				//液体阻力:Ff
 				void LiquidResistance(T At)
 				{
-					this->element->DynamicResetFunction = [&](SpatialBeamElement<T> *e,int t) {
+					this->element->DynamicResetFunctions.push_back([&](SpatialBeamElement<T> *e,int t) {
 						Matrix<T> &v = e->Velocity()[t];
 						Matrix<T> &F = e->Force()[t];
 
@@ -985,7 +1013,7 @@ namespace ComputationalMechanicsLibrary
 						Matrix<T> Ff = -M_PI*this->dynamicViscosity*(m*m - 1) / ((m*m + 1)*std::log(m) / std::log(M_E) - m*m + 1)*(v + nv)*this->element->Length();
 
 						e->Force()[t] = e->Force()[t] + Ff;
-					};
+					});
 
 				}
 				/**
@@ -993,13 +1021,55 @@ namespace ComputationalMechanicsLibrary
 				*/
 				void IndicatorDagram(Matrix<T> &m)
 				{
+					Matrix<T> Dt(2, m.Column());
+					for (int t = 0; t < m.Column(); t++)
+					{
+						Dt[0][t] = m[1][t];
+						Dt[1][t] = t*this->timeInterval;
+					}
+					Matrix<T> Vt(2, m.Column());
+					Vt = InterpolationDerivation(Dt);
+					Matrix<T> At(2, m.Column());
+					At = InterpolationDerivation(Vt);
+
 					for (int t = 0; t < m.Column(); t++)
 					{
 						this->element->Force()[t][0][0] = m[0][t];
 						this->element->Displacement()[t][0][0] = m[1][t];
+						this->element->Velocity()[t][0][0] = Vt[0][t];
+						this->element->Acceleration()[t][0][0] = At[0][t];
 					}
 					
 				}
+
+				void ImpactForce(T kn = 0.008, T ks = 0.0002)
+				{
+					this->element->DynamicResetFunctions.push_back([&](SpatialBeamElement<T> *e, int t) {
+						bool impact = false;
+						Matrix<T> k(12, 12);
+						k = { { kn,0,0,0,0,0,-kn,0,0,0,0,0 },
+						{ 0,ks,0,0,0,0,0,-ks,0,0,0,0 },
+						{ 0,0,ks,0,0,0,0,0,-ks,0,0,0 },
+						{ 0,0,0,0,0,0,0,0,0,0,0,0 },
+						{ 0,0,0,0,0,0,0,0,0,0,0,0 },
+						{ 0,0,0,0,0,0,0,0,0,0,0,0 },
+						{ -kn,0,0,0,0,0,kn,0,0,0,0,0 },
+						{ 0,-ks,0,0,0,0,0,ks,0,0,0,0 },
+						{ 0,0,-ks,0,0,0,0,0,ks,0,0,0 },
+						{ 0,0,0,0,0,0,0,0,0,0,0,0 },
+						{ 0,0,0,0,0,0,0,0,0,0,0,0 },
+						{ 0,0,0,0,0,0,0,0,0,0,0,0 } };
+						//直井？
+						impact = ((e->Displacement()[t][1][0] * e->Displacement()[t][1][0] + e->Displacement()[t][2][0] * e->Displacement()[t][2][0]) >= (this->wellDiameter*this->wellDiameter / 4)) || ((e->Displacement()[t][7][0] * e->Displacement()[t][7][0] + e->Displacement()[t][8][0] * e->Displacement()[t][8][0]) >= (this->wellDiameter*this->wellDiameter / 4));
+
+						if (impact == true)
+						{
+							e->Force()[t] = e->Force()[t] + k*(e->Displacement()[t]);
+							e->Stiffness() = e->Stiffness() + k;
+						}
+					});
+				}
+
 			};
 
 		}

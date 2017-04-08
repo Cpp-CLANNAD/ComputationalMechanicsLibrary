@@ -4,7 +4,8 @@
 #include <initializer_list>
 #include <vector>
 
-
+#include <iostream>
+#include <fstream>
 namespace ComputationalMechanicsLibrary
 {
 	/// <summary>
@@ -86,14 +87,14 @@ namespace ComputationalMechanicsLibrary
 			this->array[0] = new T[_row*_column];
 			for (int j = 0; j < _column; j++)
 			{
-				this->array[0][j] = ((T*)arr)[0 * _column + j];
+				this->array[0][j] = arr[0][j];
 			}
 			for (int i = 1; i < _row; i++)
 			{
 				this->array[i] = this->array[i - 1] + _column;
 				for (int j = 0; j < _column; j++)
 				{
-					this->array[i][j] = ((T*)arr)[i*_column + j];
+					this->array[i][j] = arr[i][j];
 				}
 			}
 			this->row = _row;
@@ -186,7 +187,7 @@ namespace ComputationalMechanicsLibrary
 		/// Get the row.
 		/// </summary>
 		/// <returns>row</returns>
-		int Row()
+		int Row() const
 		{
 			return this->row;
 		}
@@ -194,7 +195,7 @@ namespace ComputationalMechanicsLibrary
 		/// Get the Column.
 		/// </summary>
 		/// <returns>column</returns>
-		int Column()
+		int Column() const
 		{
 			return this->column;
 		}
@@ -202,7 +203,7 @@ namespace ComputationalMechanicsLibrary
 		/// Get the Array which is used to store the Matrix
 		/// </summary>
 		/// <returns>A point, point to the array</returns>
-		T** Array()
+		T** Array() const
 		{
 			return this->array;
 		}
@@ -376,7 +377,7 @@ namespace ComputationalMechanicsLibrary
 		/// </summary>
 		/// <param name="b">multiplier matrix</param>
 		/// <returns>product matrix</returns>
-		Matrix<T> Multiply(const Matrix<T> &b)
+		virtual Matrix<T> Multiply(const Matrix<T> &b)
 		{
 			if (this->column != b.row)
 			{
@@ -885,5 +886,42 @@ namespace ComputationalMechanicsLibrary
 	protected:
 
 	};
+
+
+	template<typename T>
+	void WriteMatrixToCSV(std::string filename, ComputationalMechanicsLibrary::Matrix<T> &matrix)
+	{
+		std::ofstream outfile(filename);
+
+		for (int i = 0; i < matrix.Row(); i++)
+		{
+			for (int j = 0; j < matrix.Column(); j++)
+			{
+				outfile << matrix[i][j] << ",";
+			}
+			outfile << "\n";
+		}
+
+		outfile.close();
+	}
+
+	template<typename T>
+	void ReadMatrixFromCSV(std::string filename, ComputationalMechanicsLibrary::Matrix<T> &matrix)
+	{
+		std::ifstream infile(filename);
+
+		char d;
+		for (int i = 0; i < matrix.Row(); i++)
+		{
+			for (int j = 0; j < matrix.Column(); j++)
+			{
+				infile >> matrix[i][j] >> d;
+			}
+			//infile >> d;
+		}
+
+		infile.close();
+	}
+
 
 }

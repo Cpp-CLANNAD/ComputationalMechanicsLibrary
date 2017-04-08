@@ -222,21 +222,21 @@ namespace ComputationalMechanicsLibrary
                         newStiffness[j][i] = 0;
                         newStiffness[i][j] = 0;
                     }
-                    for (int j = i + 1; j<length; j++)
-                    {
-                        newStiffness[j][i] = 0;
-                        newStiffness[i][j] = 0;
-                    }
-                }
-            }
+					for (int j = i + 1; j < length; j++)
+					{
+						newStiffness[j][i] = 0;
+						newStiffness[i][j] = 0;
+					}
+				}
+			}
 
-            D = (newStiffness ^ -1) * newForce;
+			D = (newStiffness ^ -1) * newForce;
 
-            F = K * D;
-        }
-        /** Calculate Natural Frequency with Jacobi
-         *
-         */
+			F = K * D;
+		}
+		/** Calculate Natural Frequency with Jacobi
+		 *
+		 */
 		template<typename T>
 		Matrix<T> JacobiNaturalFrequency(Matrix<T> &KK, Matrix<T> &MM)
 		{
@@ -246,53 +246,107 @@ namespace ComputationalMechanicsLibrary
 			int δ;
 			Matrix<T> P(K.Row(), 1);
 			Matrix<T> Q(K.Row(), 1);
-			for (int k = 1; k < 1000; k++)
-			{
-				for (int i = 0; i < K.Row(); i++)
-				{
-					for (int j = i + 1; j < K.Row(); j++)
-					{
-						a = K[i][i] * M[i][j] - M[i][i] * K[i][j];
-						b = K[j][j] * M[i][j] - M[j][j] * K[i][j];
-						c = K[i][i] * M[j][j] - M[i][i] * K[j][j];
-						if (c >= 0)
-							δ = 1;
-						else
-							δ = -1;
-						d = 0.5*c + δ*sqrt((0.5*c)*(0.5*c) + a*b);
-						α = d <= 1e-20 ? 0 : b / d;
-						β = d <= 1e-20 ? 0 : -a / d;
-						Matrix<T> E(K.Row(), K.Column());
-						for (int m = 0; m < E.Row(); m++)
-						{
-							E[m][m] = 1;
-						}
-						E[i][j] = α;
-						E[j][i] = β;
 
-						//WriteMatrixToCSV("EJtemp.csv", E);
-						//WriteMatrixToCSV("EJKtemp.csv", K);
-						//WriteMatrixToCSV("EJTtemp.csv", E.Transport()*K);
-						K = E.Transport()*K*E;
-						M = E.Transport()*M*E;
-						for (int m = 0; m < K.Row(); m++)
-						{
-							for (int n = 0; n < K.Column(); n++)
-							{
-								if (std::abs(K[m][n]) <= 1e-20)
-								{
-									K[m][n] = 0;
-								}
-								if (std::abs(M[m][n]) <= 1e-20)
-								{
-									M[m][n] = 0;
-								}
-							}
-						}
+			auto jacobiZero = [&](int i, int j)->void {
+
+				if (std::abs(K[i][j]) < 1.0e-12)
+				{
+					return;
+				}
+				a = K[i][i] * M[i][j] - M[i][i] * K[i][j];
+				b = K[j][j] * M[i][j] - M[j][j] * K[i][j];
+				c = K[i][i] * M[j][j] - M[i][i] * K[j][j];
+				if (std::abs(a) >= 1.0e-20&&std::abs(b) >= 1.0e-12)
+				{
+					if (c >= 0)
+						δ = 1;
+					else
+						δ = -1;
+					α =( -0.5*c + δ*std::sqrt(0.25*c*c + a*b))/a;
+					β = -a*α / b;
+				}
+				else if (std::abs(a) < 1.0e-12&&std::abs(b) >= 1.0e-12)
+				{
+					α = -K[i][j] / K[j][j];
+					β = 0;
+				}
+				else if (std::abs(a) >= 1.0e-12&&std::abs(b) < 1.0e-12)
+				{
+					α = 0;
+					β = -K[i][j] / K[j][j];
+				}
+				else
+				{
+					α = 0;
+					β = 0;
+				}
+				/*
+				Matrix<T> E(K.Row(), K.Column());
+				for (int m = 0; m < E.Row(); m++)
+				{
+					E[m][m] = 1;
+				}
+				E[i][j] = α;
+				E[j][i] = β;
+				*/
+				T aaa = α;
+				T bbb = β;
+
+				Matrix<T> KKK = K;
+				Matrix<T> MMM = M;
+				//WriteMatrixToCSV("EJtemp.csv", E);
+				//WriteMatrixToCSV("EJKtemp.csv", K);
+				//WriteMatrixToCSV("EJTtemp.csv", E.Transport()*K);
+				for (int t = 0; t < K.Row(); t++)
+				{
+					K[i][t] += β*K[j][t];
+					K[j][t] += α*K[i][t];
+
+					M[i][t] = MMM[i][t] + β*MMM[j][t];
+					M[j][t] = MMM[j][t] + α*MMM[i][t];
+
+				}
+				for (int t = 0; t < K.Row(); t++)
+				{
+					K[t][i] += β*K[t][j];
+					K[t][j] += α*K[t][i];
+
+					M[t][i] += α*β*MMM[t][i] + β*MMM[t][j];
+					M[t][j] += α*β*MMM[t][j] + α*MMM[t][i];
+					if (std::abs(K[t][i]) <= 1.0e-12)
+					{
+						K[t][i] = 0;
+					}
+					if (std::abs(K[t][j]) <= 1.0e-12)
+					{
+						K[t][j] = 0;
+					}
+					if (std::abs(M[t][i]) <= 1.0e-12)
+					{
+						M[t][j] = 0;
+					}
+					if (std::abs(M[t][j]) <= 1.0e-12)
+					{
+						M[t][j] = 0;
 					}
 				}
-				//WriteMatrixToCSV("tempK.csv", K);
-				//WriteMatrixToCSV("tempM.csv", M);
+				T cdefs = 0;
+			};
+
+
+			WriteMatrixToCSV("tempK.csv", K);
+			WriteMatrixToCSV("tempM.csv", M);
+			for (int k = 1; k < 1000; k++)
+			{
+				for (int i = 0; i < K.Column() - 1; i++)
+				{
+					for (int j = 0; j < i + 1; j++)
+					{
+						jacobiZero(j, K.Column() - 1 - i + j);
+					}
+				}
+				WriteMatrixToCSV("jK.csv", K);
+				WriteMatrixToCSV("jM.csv", M);
 				for (int ii = 0; ii < K.Row(); ii++)
 				{
 					P[ii][0] = K[ii][ii] / M[ii][ii];
@@ -300,7 +354,7 @@ namespace ComputationalMechanicsLibrary
 				int totalEndFor = 0;
 				for (int ii = 0; ii < K.Row(); ii++)
 				{
-					if (std::abs((P[ii][0] - Q[ii][0]) / P[ii][0]) <= 1e-20)
+					if (std::abs((P[ii][0] - Q[ii][0]) / P[ii][0]) <= 1.0e-12)
 					{
 						totalEndFor++;
 					}
@@ -315,8 +369,8 @@ namespace ComputationalMechanicsLibrary
 				}
 			}
 
-			//WriteMatrixToCSV("aK.csv", K);
-			//WriteMatrixToCSV("aM.csv", M);
+			WriteMatrixToCSV("jK.csv", K);
+			WriteMatrixToCSV("jM.csv", M);
 			for (int ii = 0; ii < P.Row(); ii++)
 			{
 				P[ii][0] = std::sqrt(std::abs(P[ii][0]));
@@ -345,6 +399,53 @@ namespace ComputationalMechanicsLibrary
 
 			return P;
 
+		}
+
+		template<typename T>
+		Matrix<T> MatrixIteration(Matrix<T> &KK, Matrix<T> &MM)
+		{
+			Matrix<T> K = KK;
+			Matrix<T> M = MM;
+			
+			Matrix<T> R = K^-1;
+			Matrix<T> D = R*M;
+
+			Matrix<T> A1(D.Row(), 1);
+			for (int i = 0; i < A1.Row(); i++)
+			{
+				A1[i][0] = 1;
+			}
+
+			Matrix<T> B1 = D*A1;
+
+			return B1;
+		}
+
+		template<typename T>
+		Matrix<T> InterpolationDerivation(Matrix<T> &F)
+		{
+			//F.Row=2
+			Matrix<T> f(F.Row(), F.Column());
+			f[0][0] = 0;
+			f[1][0] = F[1][0];
+			for (int i = 1; i < F.Column() - 1; i++)
+			{
+				T leftD = (F[0][i] - F[0][i - 1]) / (F[1][i] - F[1][i - 1]);
+				T rightD = (F[0][i + 1] - F[0][i]) / (F[1][i + 1] - F[1][i]);
+				if(leftD*rightD<0)
+				{
+					f[0][i] = 0;
+				}
+				else
+				{
+					f[0][i] = leftD;
+				}
+
+				f[1][i] = F[1][i];
+			}
+			f[0][f.Column() - 1] = (F[0][f.Column() - 1] - F[0][f.Column() - 2]) / (F[1][f.Column() - 1] - F[1][f.Column() - 2]);
+
+			return f;
 		}
 
     }

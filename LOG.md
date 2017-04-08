@@ -1,3 +1,8 @@
+# v0.2.1.20170408_Alpha
+fix some bug
+
+add Read and Write Matrix CSV
+
 # v0.2.0.20170320_Alpha
 fix lots of bug
 preprocessing done
