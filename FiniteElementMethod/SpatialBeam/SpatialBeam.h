@@ -754,6 +754,81 @@ namespace ComputationalMechanicsLibrary
 
 					}
 				}
+				void NodeIterationBottom(Matrix<T>& K, Matrix<T>& d, Matrix<T>& F)
+				{
+
+					int r = d.Row();
+					//3*6=18宽？
+					//Three diagonal matrix??
+					Matrix<T> d0 = { { d[r - 18][0] },{ d[r - 17][0] },{ d[r - 16][0] },{ d[r - 15][0] },{ d[r - 14][0] },{ d[r - 13][0] } };
+					Matrix<T> d1 = { { d[r - 12][0] },{ d[r - 11][0] },{ d[r - 10][0] },{ d[r - 9][0] },{ d[r - 8][0] },{ d[r - 7][0] } };
+					Matrix<T> d2 = { { d[r - 6][0] },{ d[r - 5][0] },{ d[r - 4][0] },{ d[r - 3][0] },{ d[r - 2][0] },{ d[r - 1][0] } };
+
+					Matrix<T> F0 = { { F[r - 18][0] },{ F[r - 17][0] },{ F[r - 16][0] },{ F[r - 15][0] },{ F[r - 14][0] },{ F[r - 13][0] } };
+					Matrix<T> F1 = { { F[r - 12][0] },{ F[r - 11][0] },{ F[r - 10][0] },{ F[r - 9][0] },{ F[r - 8][0] },{ F[r - 7][0] } };
+					Matrix<T> F2 = { { F[r - 6][0] },{ F[r - 5][0] },{ F[r - 4][0] },{ F[r - 3][0] },{ F[r - 2][0] },{ F[r - 1][0] } };
+
+					Matrix<double> K00(6, 6);
+					Matrix<double> K01(6, 6);
+					Matrix<double> K10(6, 6);
+					Matrix<double> K11(6, 6);
+					Matrix<double> K12(6, 6);
+					Matrix<double> K21(6, 6);
+					Matrix<double> K22(6, 6);
+					for (int i = 0; i < 6; i++)
+					{
+						for (int j = 0; j < 6; j++)
+						{
+							K00[i][j] = K[i + r - 18][j + r - 18];
+							K01[i][j] = K[i][j + r - 12];
+							K10[i][j] = K[i + r - 12][j];
+							K11[i][j] = K[i + r - 12][j + r - 6 * 2];
+							K12[i][j] = K[i + r - 12][j + r - 6];
+							K21[i][j] = K[i + r - 6][j + r - 12];
+							K22[i][j] = K[i + r - 6][j + r - 6];
+						}
+					}
+
+					d1 = (K21^-1)*(F2 - K22*d2);
+					for (int i = 0; i < 6; i++)
+					{
+						d[i + r - 12][0] = d1[i][0];
+					}
+
+					for (int t = r / 6 - 1; t >= 2; t++)
+					{
+						for (int j = 0; j < 6; j++)
+						{
+							d0[j][0] = d[(t - 2) * 6 + j][0];
+							d1[j][0] = d[(t - 1) * 6 + j][0];
+							d2[j][0] = d[t * 6 + j][0];
+							F0[j][0] = F[(t - 2) * 6 + j][0];
+							F1[j][0] = F[(t - 1) * 6 + j][0];
+							F2[j][0] = F[t * 6 + j][0];
+						}
+
+						for (int i = 0; i < 6; i++)
+						{
+							for (int j = 0; j < 6; j++)
+							{
+								K00[i][j] = K[(t - 2) * 6 + i][(t - 2) * 6 + j];
+								K01[i][j] = K[(t - 2) * 6 + i][(t - 1) * 6 + j];
+								K10[i][j] = K[(t - 1) * 6 + i][(t - 2) * 6 + j];
+								K11[i][j] = K[(t - 1) * 6 + i][(t - 1) * 6 + j];
+								K12[i][j] = K[(t - 1) * 6 + i][t * 6 + j];
+								K21[i][j] = K[t * 6 + i][(t - 1) * 6 + j];
+								K22[i][j] = K[t * 6 + i][t * 6 + j];
+							}
+						}
+
+						d0 = (K10^-1)*(F1 - K11*d1 - K12*d2);
+						for (int j = 0; j < 6; j++)
+						{
+							d[(t - 2) * 6 + j][0] = d0[j][0];
+						}
+
+					}
+				}
 				void Newmark(Matrix<T>& K, Matrix<T>& M, Matrix<T>& C,
 					Matrix<T>& d, Matrix<T>& v, Matrix<T>& a,Matrix<T>& F, Matrix<T>& dnext, Matrix<T>& vnext, Matrix<T>& anext, Matrix<T>& Fnext,
 					std::vector<int>& unKnowD, std::vector<int>& unKnowV, std::vector<int>& unKnowA, std::vector<int>& unKnowDnext, std::vector<int>& unKnowVnext, std::vector<int>& unKnowAnext, std::vector<int>& unKnowFnext)
@@ -777,24 +852,51 @@ namespace ComputationalMechanicsLibrary
 
 					this->NodeIteration(effectiveK, dnext, effectiveFnext);
 
-					Matrix<T> effectiveKv = 1.0 / delta / DELTAt*M + C;
-					Matrix<T> effectiveFnextv = Fnext + M*(1.0 / delta/DELTAt*v + (1.0 / delta + 1)*a) - K*dnext;
+					auto nFast = [&]() {
+						anext = c[0] * (dnext - d) - c[2] * v - c[3] * a;
+						vnext = v + c[6] * a + c[7] * anext;
+					};
 
-					WriteMatrixToCSV("effKv.csv", effectiveKv);
-					WriteMatrixToCSV("effFv.csv", effectiveFnextv);
+					auto vFast = [&]()->void {
+						Matrix<T> effectiveKv = 1.0 / delta / DELTAt*M + C;
+						Matrix<T> effectiveFnextv = Fnext + M*(1.0 / delta / DELTAt*v + (1.0 / delta + 1)*a) - K*dnext;
 
-					this->NodeIteration(effectiveKv, vnext, effectiveFnextv);
+						WriteMatrixToCSV("effKv.csv", effectiveKv);
+						WriteMatrixToCSV("effFv.csv", effectiveFnextv);
 
-					//WriteMatrixToCSV("effVnext.csv", vnext);
+						this->NodeIteration(effectiveKv, vnext, effectiveFnextv);
 
-					Matrix<T> effectiveKa = M;
-					Matrix<T> effectiveFnexta = F - C*vnext - K*dnext;
+						//WriteMatrixToCSV("effVnext.csv", vnext);
 
-					WriteMatrixToCSV("effKa.csv", effectiveKa);
-					WriteMatrixToCSV("effFa.csv", effectiveFnexta);
+						Matrix<T> effectiveKa = M;
+						Matrix<T> effectiveFnexta = Fnext - C*vnext - K*dnext;
 
-					this->NodeIteration(effectiveKa, anext, effectiveFnexta);
+						WriteMatrixToCSV("effKa.csv", effectiveKa);
+						WriteMatrixToCSV("effFa.csv", effectiveFnexta);
 
+						this->NodeIteration(effectiveKa, anext, effectiveFnexta);
+					};
+					auto aFast = [&]()->void {
+						Matrix<T> effectiveKa = M + DELTAt*delta*C;
+						Matrix<T> effectiveFnexta = Fnext - C*v - DELTAt*(1 + delta)*C*a - K*dnext;
+
+						WriteMatrixToCSV("effKa.csv", effectiveKa);
+						WriteMatrixToCSV("effFa.csv", effectiveFnexta);
+
+						this->NodeIteration(effectiveKa, anext, effectiveFnexta);
+
+						//WriteMatrixToCSV("effVnext.csv", vnext);
+
+						Matrix<T> effectiveKv = C;
+						Matrix<T> effectiveFnextv = Fnext - M*anext - K*dnext;
+
+						WriteMatrixToCSV("effKv.csv", effectiveKv);
+						WriteMatrixToCSV("effFv.csv", effectiveFnextv);
+
+						this->NodeIteration(effectiveKv, vnext, effectiveFnextv);
+					};
+					
+					nFast();
 					/*
 					if (this->ifFirstNewMark == true)
 					{
@@ -806,10 +908,10 @@ namespace ComputationalMechanicsLibrary
 					//WriteMatrixToCSV("anNewmarkDnext.csv", dnext);
 					//temp=c[0] * (dnext - d) - c[2] * v - c[3] * a;
 					//CutZeroAddOne(EM,anext,temp,unKnowAnext,std::vector<int>(this->Length(),1),this->Length());
-					//////////////////////////anext = c[0] * (dnext - d) - c[2] * v - c[3] * a;
+					//
 					//temp=v + ((1 - delta)*a + delta*anext)*DELTAt;
 					//CutZeroAddOne(EM,vnext,temp,unKnowVnext,std::vector<int>(this->Length(),1),this->Length());
-					/////////////////////////vnext = v + c[6] * a + c[7] * anext;
+					//
 					//temp=M*anext+C*vnext+K*dnext;
 					//CutZeroAddOne(EM,Fnext,temp,unKnowFnext,std::vector<int>(this->Length(),1),this->Length());
 					//Fnext=M*anext+C*vnext+K*dnext;
@@ -997,6 +1099,109 @@ namespace ComputationalMechanicsLibrary
 					}
 				}
 
+				//should use it after Gravity.
+				void GravityStatic(std::vector<SpatialBeamElement<T>*>& _element)
+				{
+					//consecutive node number : 1,2,3,4,...
+					int all = 0;
+					for (IDynamicElement<T>* e : _element)
+					{
+						for (int i : e->Node())
+						{
+							if (i > all)
+							{
+								all = i;
+							}
+						}
+					}
+					int length=all * 6;
+
+					Matrix<T> stiffness(length, length);
+					Matrix<T> force(length, 1);
+					Matrix<T> displacement(length, 1);
+
+					for (IDynamicElement<T>* e : _element)
+					{
+						int ei = e->Node()[0];
+						int ej = e->Node()[1];
+
+						int ni = ei, nj = ei;
+						for (int i = 0; i < e->Stiffness().Row(); i++)
+						{
+							if (i >= 6)
+							{
+								ni = ej;
+							}
+							else
+							{
+								ni = ei;
+							}
+
+							force[(ni - 1) * 6 + i % 6][0] += e->Force()[0][i][0];
+							displacement[(ni - 1) * 6 + i % 6][0] += e->Displacement()[0][i][0];
+
+							for (int j = 0; j < e->Stiffness().Column(); j++)
+							{
+								if (j >= 6)
+								{
+									nj = ej;
+								}
+								else
+								{
+									nj = ei;
+								}
+
+								stiffness[(ni - 1) * 6 + i % 6][(nj - 1) * 6 + j % 6] += e->Stiffness()[i][j];
+							}
+						}
+					}
+
+					std::vector<int> unKnowDisplacement;
+					for (int i = 0; i < 6; i++)
+					{
+						unKnowDisplacement.push_back(1);
+					}			
+					for (int i = 6; i < length; i++)
+					{
+						unKnowDisplacement.push_back(0);
+					}
+					std::vector<int> unKnowForce;
+					for (int i = 0; i < 6; i++)
+					{
+						unKnowForce.push_back(0);
+					}
+					for (int i = 6; i < length; i++)
+					{
+						unKnowForce.push_back(1);
+					}
+
+					//EliminationMethod(stiffness, displacement, force, unKnowDisplacement, unKnowForce, length);
+					CutZeroAddOne(stiffness, displacement, force, unKnowDisplacement, unKnowForce, length);
+
+					for (IDynamicElement<T>* e : _element)
+					{
+						int ei = e->Node()[0];
+						int ej = e->Node()[1];
+
+						int ni = ei, nj = ei;
+						for (int i = 0; i < e->Stiffness().Row(); i++)
+						{
+							if (i >= 6)
+							{
+								ni = ej;
+							}
+							else
+							{
+								ni = ei;
+							}
+
+							e->Displacement()[0][i][0] = displacement[(ni - 1) * 6 + i % 6][0];
+							e->Force()[0][i][0] = force[(ni - 1) * 6 + i % 6][0];
+						}
+					}
+
+				}
+
 				//液体阻力:Ff
 				void LiquidResistance(T At)
 				{
@@ -1039,7 +1244,36 @@ namespace ComputationalMechanicsLibrary
 						this->element->Velocity()[t][0][0] = Vt[0][t];
 						this->element->Acceleration()[t][0][0] = At[0][t];
 					}
+
+					WriteMatrixToCSV("Atop.csv", At);
 					
+				}
+				/**
+				*泵功图加入，按时间排列，两行，第一行力，第二行位移
+				*/
+				void PumpWork(Matrix<T> &m)
+				{
+					Matrix<T> Dt(2, m.Column());
+					for (int t = 0; t < m.Column(); t++)
+					{
+						Dt[0][t] = m[1][t];
+						Dt[1][t] = t*this->timeInterval;
+					}
+					Matrix<T> Vt(2, m.Column());
+					Vt = InterpolationDerivation(Dt);
+					Matrix<T> At(2, m.Column());
+					At = InterpolationDerivation(Vt);
+
+					for (int t = 0; t < m.Column(); t++)
+					{
+						this->element->Force()[t][0][0] = m[0][t];
+						this->element->Displacement()[t][0][0] = m[1][t];
+						this->element->Velocity()[t][0][0] = Vt[0][t];
+						this->element->Acceleration()[t][0][0] = At[0][t];
+					}
+
+					WriteMatrixToCSV("Aend.csv", At);
+
 				}
 
 				void ImpactForce(T kn = 0.008, T ks = 0.0002)
@@ -1072,6 +1306,35 @@ namespace ComputationalMechanicsLibrary
 
 			};
 
+			template<typename T>
+			class SpatialBeamPostprocessor
+			{
+			public:
+				SpatialBeamSolver<T> *solver;
+
+				SpatialBeamPostprocessor(SpatialBeamSolver<T> *_solver)
+				{
+					this->solver = _solver;
+				}
+
+				Matrix<T> PumpWorkBuild()
+				{
+					Matrix<T> fs(2, this->solver->Force().size());
+					for (int t = 0; t < fs.Column(); t++)
+					{
+						Matrix<T> Fn = (this->solver->Stiffness())*(this->solver->Displacement()[t]);
+						fs[0][t] = this->solver->Force()[t][0][0] + Fn[this->solver->Force()[0].Row() - 6][0];
+						fs[1][t] = this->solver->Displacement()[t][this->solver->Force()[0].Row() - 6][0];
+					}
+					
+					return fs;
+				}
+
+			private:
+
+			protected:
+
+			};
 		}
 	}
 }

@@ -174,6 +174,23 @@ namespace ComputationalMechanicsLibrary
             this->row = _row;
             this->column = _row;
         }
+		
+		//full this matrix by another matrix, just change values in array, but not change address.
+		void FullMatrix(Matrix<T> &m)
+		{
+			if (m.Row() != this->row || m.Column() != this->column)
+			{
+				throw std::exception("not align row or column");
+			}
+
+			for (int i = 0; i < this->row; i++)
+			{
+				for (int j = 0; j < this->column; j++)
+				{
+					this->array[i][j] = m[i][j];
+				}
+			}
+		}
 
 		/// <summary>
 		/// Check whether this matrix is Square matrix

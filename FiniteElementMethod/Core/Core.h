@@ -234,6 +234,58 @@ namespace ComputationalMechanicsLibrary
 
 			F = K * D;
 		}
+		
+		template<typename T>
+		void EliminationMethod(ComputationalMechanicsLibrary::Matrix<T>& K, ComputationalMechanicsLibrary::Matrix<T>& D, ComputationalMechanicsLibrary::Matrix<T>& F, std::vector<int>& unKnowD, std::vector<int>& unKnowF, int length)
+		{
+			int newLength = 0;
+			for (int f : unKnowD)
+			{
+				if (f == 0)
+				{
+					newLength++;
+				}
+			}
+
+			Matrix<T> newStiffness(newLength,newLength);
+			Matrix<T> newForce(newLength,1);
+
+			for (int i = 0,k=0; i < unKnowD.size(); i++)
+			{
+				if (unKnowD[i] == 0)
+				{
+					for (int j = 0,m=0; j < unKnowD.size(); j++)
+					{
+						if (unKnowD[j] == 0)
+						{
+							newStiffness[k][m] = K[i][j];
+							m++;
+						}
+					}
+					newForce[k][0] = F[i][0];
+					for (int j = 0; j < unKnowD.size(); j++)
+					{
+						if (unKnowD[j] != 0)
+						{
+							newForce[k][0] -= K[i][j] * D[j][0];
+						}
+					}
+					k++;
+				}
+			}
+
+			Matrix<T> newDisplacement = (newStiffness ^ -1) * newForce;
+
+			for (int i = 0, k = 0; i < unKnowD.size(); i++)
+			{
+				if (unKnowD[i] == 0)
+				{
+					D[i][0] = newDisplacement[k][0];
+				}
+			}
+
+		}
+		
 		/** Calculate Natural Frequency with Jacobi
 		 *
 		 */
@@ -308,27 +360,27 @@ namespace ComputationalMechanicsLibrary
 				}
 				for (int t = 0; t < K.Row(); t++)
 				{
-					K[t][i] += β*K[t][j];
-					K[t][j] += α*K[t][i];
+K[t][i] += β*K[t][j];
+K[t][j] += α*K[t][i];
 
-					M[t][i] += α*β*MMM[t][i] + β*MMM[t][j];
-					M[t][j] += α*β*MMM[t][j] + α*MMM[t][i];
-					if (std::abs(K[t][i]) <= 1.0e-12)
-					{
-						K[t][i] = 0;
-					}
-					if (std::abs(K[t][j]) <= 1.0e-12)
-					{
-						K[t][j] = 0;
-					}
-					if (std::abs(M[t][i]) <= 1.0e-12)
-					{
-						M[t][j] = 0;
-					}
-					if (std::abs(M[t][j]) <= 1.0e-12)
-					{
-						M[t][j] = 0;
-					}
+M[t][i] += α*β*MMM[t][i] + β*MMM[t][j];
+M[t][j] += α*β*MMM[t][j] + α*MMM[t][i];
+if (std::abs(K[t][i]) <= 1.0e-12)
+{
+	K[t][i] = 0;
+}
+if (std::abs(K[t][j]) <= 1.0e-12)
+{
+	K[t][j] = 0;
+}
+if (std::abs(M[t][i]) <= 1.0e-12)
+{
+	M[t][j] = 0;
+}
+if (std::abs(M[t][j]) <= 1.0e-12)
+{
+	M[t][j] = 0;
+}
 				}
 				T cdefs = 0;
 			};
@@ -378,16 +430,16 @@ namespace ComputationalMechanicsLibrary
 			//sort
 			T iTemp;
 			bool bFilish = false;
-			for (int i = 0; i<P.Row() - 1; i++)
+			for (int i = 0; i < P.Row() - 1; i++)
 			{
 				if (bFilish == true)
 				{
 					break;
 				}
 				bFilish = true;
-				for (int j = P.Row() - 1; j>i; j--)
+				for (int j = P.Row() - 1; j > i; j--)
 				{
-					if (P[j][0]<P[j - 1][0])
+					if (P[j][0] < P[j - 1][0])
 					{
 						iTemp = P[j - 1][0];
 						P[j - 1][0] = P[j][0];
@@ -399,6 +451,63 @@ namespace ComputationalMechanicsLibrary
 
 			return P;
 
+		}
+
+		template<typename T>
+		Matrix<T> ImplicitMovingMethodFrequency(Matrix<T> &KK, Matrix<T> &MM)
+		{
+			Matrix<T> L = CholeskyDecompose(MM);
+
+			Matrix<T> B = L*KK;
+			Matrix<T> A = (L^-1)*(B.Transport());
+		}
+
+		template <typename T>
+		Matrix<T> CholeskyDecompose(Matrix<T> &M)
+		{
+			Matrix<T> result(M.Row(), M.Column());
+
+			for (int k = 0; k < result.Row(); k++)
+			{
+				for (int j = 0; j < k; j++)
+				{
+					result[k][j] = M[k][j];
+					for (int i = 0; i < j - 1; i++)
+					{
+						result[k][j] -= result[k][i] * result[j][i];
+					}
+					result[k][j] /= result[j][j];
+				}
+				result[k][k] = M[k][k];
+				for (int i = 0; i < k - 1; i++)
+				{
+					result[k][k] -= result[k][i] * result[k][i];
+				}
+				result[k][k] = std::sqrt(result[k][k]);
+			}
+
+			return result;
+		}
+
+		template<typename T>
+		Matrix<T> LowerTriangleTransform(Matrix<T> &M)
+		{
+			Matrix<T> result(M);
+			for (int j = M.Column() - 1; j >= 0; j--)
+			{
+				for (int i = 0; i < j; i++)
+				{
+					if(std::abs(result[i][j])>1e-12)
+					{
+						for (int k = 0; k < M.Column(); k++)
+						{
+							result[i][k] = result[i][k] - result[i][j] / result[j][j] * result[j][k];
+						}
+					}
+				}
+			}
+
+			return result;
 		}
 
 		template<typename T>
@@ -446,6 +555,55 @@ namespace ComputationalMechanicsLibrary
 			f[0][f.Column() - 1] = (F[0][f.Column() - 1] - F[0][f.Column() - 2]) / (F[1][f.Column() - 1] - F[1][f.Column() - 2]);
 
 			return f;
+		}
+
+		template<typename T>
+		void AverageSmoothing(std::vector<Matrix<T>> &us)
+		{
+			std::vector<Matrix<T>> nUs;
+			nUs.reserve(us.size());
+			for (int i = 0; i < us.size(); i++)
+			{
+				nUs.push_back(Matrix<T>(us[i]));
+			}
+
+			for (int k = 1; k < us.size(); k++)
+			{
+				for (int i = 0; i < us[k].Row(); i++)
+				{
+					for (int j = 0; j < us[k].Column(); j++)
+					{
+						us[k][i][j] = (nUs[k][i][j] + nUs[k - 1][i][j]) / 2;
+					}
+				}
+			}
+
+		}
+		
+		//use AverageSmoothing twice and move up for aligned time.
+		template<typename T>
+		void ReduceAverage(std::vector<Matrix<T>> &us)
+		{
+			AverageSmoothing(us);
+			AverageSmoothing(us);
+			for (int i = 1; i < us.size()-1; i++)
+			{
+				for (int m = 0; m<us[i].Row(); m++)
+				{
+					for (int n = 0; n < us[i].Column(); n++)
+					{
+						us[i][m][n] = us[i + 1][m][n];
+					}
+				}
+			}
+
+			for (int m = 0; m<us[us.size()-1].Row(); m++)
+			{
+				for (int n = 0; n < us[us.size()-1].Column(); n++)
+				{
+					us[us.size()-1][m][n] = 0;
+				}
+			}
 		}
 
     }
