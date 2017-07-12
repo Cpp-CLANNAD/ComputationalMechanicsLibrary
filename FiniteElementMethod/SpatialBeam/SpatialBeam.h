@@ -1,5 +1,6 @@
 #pragma once
 #include "../Core/Core.h"
+#include "../../Multinomial/Multinomial.h"
 
 #include <functional>
 
@@ -384,9 +385,15 @@ namespace ComputationalMechanicsLibrary
 			class SpatialBeamSolver //:public IDynamicSolver<T>
 			{
 			public:
-				SpatialBeamSolver(std::vector<SpatialBeamElement<T>*>& _element, T _timeInterval, DampType _type = DampType::Rayleigh,
+				SpatialBeamSolver()
+				{
+
+				}
+				void Solve(std::vector<SpatialBeamElement<T>*>& _element, T _timeInterval, DampType _type = DampType::Rayleigh,
 					T _omega1 = 0.2507,T _omega2 = 0.4413,T _zeta1 = 0.2,T _zeta2 = 0.2)
 				{
+					this->NodeIterationBottomFunctions;
+
 					this->omega1 = _omega1;
 					this->omega2 = _omega2;
 					this->zeta1 = _zeta1;
@@ -478,8 +485,14 @@ namespace ComputationalMechanicsLibrary
 					}
 
 					//time--->>>
+					this->timeNumber = 0;//bar laji ...
 					for (int t = 0; t < this->force.size() - 1; t++)
 					{
+						if (this->stopSolve == true)
+						{
+							return;
+						}
+						this->timeNumber++;//bar laji ...
 						this->Newmark(this->stiffness, this->mass, this->damp,
 							this->displacement[t], this->velocity[t], this->acceleration[t], this->force[t], this->displacement[t + 1], this->velocity[t + 1], this->acceleration[t + 1], this->force[t + 1],
 							this->unKnowDisplacement[t], this->unKnowVelocity[t], this->unKnowAcceleration[t], this->unKnowDisplacement[t + 1], this->unKnowVelocity[t + 1], this->unKnowAcceleration[t + 1], this->unKnowForce[t + 1]);
@@ -572,6 +585,9 @@ namespace ComputationalMechanicsLibrary
 					}
 				}
 
+				std::vector<std::function<void(Matrix<T> &K,Matrix<T> &F,Matrix<T> &d)>> NodeIterationBottomFunctions;
+
+
 				std::vector<SpatialBeamElement<T>*>& Element()
 				{
 					return this->element;
@@ -648,6 +664,8 @@ namespace ComputationalMechanicsLibrary
 					return all * 6;
 				}
 
+				int timeNumber = 0;
+				bool stopSolve = false;
 			private:
 				std::vector<SpatialBeamElement<T>*> element;
 				std::vector<Matrix<T>> force;
@@ -780,9 +798,9 @@ namespace ComputationalMechanicsLibrary
 						for (int j = 0; j < 6; j++)
 						{
 							K00[i][j] = K[i + r - 18][j + r - 18];
-							K01[i][j] = K[i][j + r - 12];
-							K10[i][j] = K[i + r - 12][j];
-							K11[i][j] = K[i + r - 12][j + r - 6 * 2];
+							K01[i][j] = K[i + r - 18][j + r - 12];
+							K10[i][j] = K[i + r - 12][j + r - 18];
+							K11[i][j] = K[i + r - 12][j + r - 12];
 							K12[i][j] = K[i + r - 12][j + r - 6];
 							K21[i][j] = K[i + r - 6][j + r - 12];
 							K22[i][j] = K[i + r - 6][j + r - 6];
@@ -794,8 +812,19 @@ namespace ComputationalMechanicsLibrary
 					{
 						d[i + r - 12][0] = d1[i][0];
 					}
+					//Top force
+					for (auto df : this->NodeIterationBottomFunctions)
+					{
+						df(K, F, d);
+					}
+					//Top force
+					/*Matrix<T> Ftop = K21*d1 + K22*d2;
+					for (int i = 0; i < Ftop.Row(); i++)
+					{
+						F[i][0] = Ftop[i][0];
+					}*/
 
-					for (int t = r / 6 - 1; t >= 2; t++)
+					for (int t = r / 6 - 1; t >= 2; t--)
 					{
 						for (int j = 0; j < 6; j++)
 						{
@@ -849,7 +878,188 @@ namespace ComputationalMechanicsLibrary
 					WriteMatrixToCSV("eFn.csv", effectiveFnext);
 					//WriteMatrixToCSV("eKi.csv", effectiveK.Inverse());
 					//dnext = effectiveK.Inverse()*effectiveFnext;
+					auto nCut = [&]() {
+						int r = dnext.Row();
+						//3*6=18宽？
+						//Three diagonal matrix??
+						Matrix<T> d0 = { { dnext[r - 18][0] },{ dnext[r - 17][0] },{ dnext[r - 16][0] },{ dnext[r - 15][0] },{ dnext[r - 14][0] },{ dnext[r - 13][0] } };
+						Matrix<T> d1 = { { dnext[r - 12][0] },{ dnext[r - 11][0] },{ dnext[r - 10][0] },{ dnext[r - 9][0] },{ dnext[r - 8][0] },{ dnext[r - 7][0] } };
+						Matrix<T> d2 = { { dnext[r - 6][0] },{ dnext[r - 5][0] },{ dnext[r - 4][0] },{ dnext[r - 3][0] },{ dnext[r - 2][0] },{ dnext[r - 1][0] } };
 
+						Matrix<T> F0 = { { effectiveFnext[r - 18][0] },{ effectiveFnext[r - 17][0] },{ effectiveFnext[r - 16][0] },{ effectiveFnext[r - 15][0] },{ effectiveFnext[r - 14][0] },{ effectiveFnext[r - 13][0] } };
+						Matrix<T> F1 = { { effectiveFnext[r - 12][0] },{ effectiveFnext[r - 11][0] },{ effectiveFnext[r - 10][0] },{ effectiveFnext[r - 9][0] },{ effectiveFnext[r - 8][0] },{ effectiveFnext[r - 7][0] } };
+						Matrix<T> F2 = { { effectiveFnext[r - 6][0] },{ effectiveFnext[r - 5][0] },{ effectiveFnext[r - 4][0] },{ effectiveFnext[r - 3][0] },{ effectiveFnext[r - 2][0] },{ effectiveFnext[r - 1][0] } };
+
+						Matrix<double> K00(6, 6);
+						Matrix<double> K01(6, 6);
+						Matrix<double> K10(6, 6);
+						Matrix<double> K11(6, 6);
+						Matrix<double> K12(6, 6);
+						Matrix<double> K21(6, 6);
+						Matrix<double> K22(6, 6);
+						for (int i = 0; i < 6; i++)
+						{
+							for (int j = 0; j < 6; j++)
+							{
+								K00[i][j] = effectiveK[i + r - 18][j + r - 18];
+								K01[i][j] = effectiveK[i + r - 18][j + r - 12];
+								K10[i][j] = effectiveK[i + r - 12][j + r - 18];
+								K11[i][j] = effectiveK[i + r - 12][j + r - 12];
+								K12[i][j] = effectiveK[i + r - 12][j + r - 6];
+								K21[i][j] = effectiveK[i + r - 6][j + r - 12];
+								K22[i][j] = effectiveK[i + r - 6][j + r - 6];
+							}
+						}
+
+						d1 = (K21^-1)*(F2 - K22*d2);
+						for (int i = 0; i < 6; i++)
+						{
+							dnext[i + r - 12][0] = d1[i][0];
+						}
+						for (auto df : this->NodeIterationBottomFunctions)
+						{
+							df(K, Fnext, dnext);
+						}
+						effectiveFnext = Fnext + M*(c[0] * d + c[2] * v + c[4] * a) + C*(c[1] * d + c[3] * v + c[5] * a);
+
+						Matrix<T> eKz(effectiveK.Row() - 6, effectiveK.Column() - 6);
+						Matrix<T> eFnz(effectiveFnext.Row() - 6, effectiveFnext.Column());
+
+						for (int i = 0; i < eKz.Row(); i++)
+						{
+							eFnz[i][0] = effectiveFnext[i][0];
+							for (int j = 0; j < eKz.Column(); j++)
+							{
+								eKz[i][j] = effectiveK[i][j];
+							}
+						}
+
+						Matrix<T> dnz = (eKz^-1)*eFnz;
+
+						for (int i = 0; i < dnz.Row(); i++)
+						{
+							dnext[i][0] = dnz[i][0];
+						}
+					};
+					auto nBottom = [&]()->void {
+						int r = dnext.Row();
+						//3*6=18宽？
+						//Three diagonal matrix??
+						Matrix<T> d0 = { { dnext[r - 18][0] },{ dnext[r - 17][0] },{ dnext[r - 16][0] },{ dnext[r - 15][0] },{ dnext[r - 14][0] },{ dnext[r - 13][0] } };
+						Matrix<T> d1 = { { dnext[r - 12][0] },{ dnext[r - 11][0] },{ dnext[r - 10][0] },{ dnext[r - 9][0] },{ dnext[r - 8][0] },{ dnext[r - 7][0] } };
+						Matrix<T> d2 = { { dnext[r - 6][0] },{ dnext[r - 5][0] },{ dnext[r - 4][0] },{ dnext[r - 3][0] },{ dnext[r - 2][0] },{ dnext[r - 1][0] } };
+
+						Matrix<T> F0 = { { effectiveFnext[r - 18][0] },{ effectiveFnext[r - 17][0] },{ effectiveFnext[r - 16][0] },{ effectiveFnext[r - 15][0] },{ effectiveFnext[r - 14][0] },{ effectiveFnext[r - 13][0] } };
+						Matrix<T> F1 = { { effectiveFnext[r - 12][0] },{ effectiveFnext[r - 11][0] },{ effectiveFnext[r - 10][0] },{ effectiveFnext[r - 9][0] },{ effectiveFnext[r - 8][0] },{ effectiveFnext[r - 7][0] } };
+						Matrix<T> F2 = { { effectiveFnext[r - 6][0] },{ effectiveFnext[r - 5][0] },{ effectiveFnext[r - 4][0] },{ effectiveFnext[r - 3][0] },{ effectiveFnext[r - 2][0] },{ effectiveFnext[r - 1][0] } };
+
+						Matrix<double> K00(6, 6);
+						Matrix<double> K01(6, 6);
+						Matrix<double> K10(6, 6);
+						Matrix<double> K11(6, 6);
+						Matrix<double> K12(6, 6);
+						Matrix<double> K21(6, 6);
+						Matrix<double> K22(6, 6);
+						for (int i = 0; i < 6; i++)
+						{
+							for (int j = 0; j < 6; j++)
+							{
+								K00[i][j] = effectiveK[i + r - 18][j + r - 18];
+								K01[i][j] = effectiveK[i + r - 18][j + r - 12];
+								K10[i][j] = effectiveK[i + r - 12][j + r - 18];
+								K11[i][j] = effectiveK[i + r - 12][j + r - 12];
+								K12[i][j] = effectiveK[i + r - 12][j + r - 6];
+								K21[i][j] = effectiveK[i + r - 6][j + r - 12];
+								K22[i][j] = effectiveK[i + r - 6][j + r - 6];
+							}
+						}
+
+						d1 = (K21^-1)*(F2 - K22*d2);
+						for (int i = 0; i < 6; i++)
+						{
+							dnext[i + r - 12][0] = d1[i][0];
+						}
+						//Top force
+						for (auto df : this->NodeIterationBottomFunctions)
+						{
+							df(K, Fnext, dnext);
+						}
+						effectiveFnext = Fnext + M*(c[0] * d + c[2] * v + c[4] * a) + C*(c[1] * d + c[3] * v + c[5] * a);
+						F0 = { { effectiveFnext[r - 18][0] },{ effectiveFnext[r - 17][0] },{ effectiveFnext[r - 16][0] },{ effectiveFnext[r - 15][0] },{ effectiveFnext[r - 14][0] },{ effectiveFnext[r - 13][0] } };
+						F1 = { { effectiveFnext[r - 12][0] },{ effectiveFnext[r - 11][0] },{ effectiveFnext[r - 10][0] },{ effectiveFnext[r - 9][0] },{ effectiveFnext[r - 8][0] },{ effectiveFnext[r - 7][0] } };
+						F2 = { { effectiveFnext[r - 6][0] },{ effectiveFnext[r - 5][0] },{ effectiveFnext[r - 4][0] },{ effectiveFnext[r - 3][0] },{ effectiveFnext[r - 2][0] },{ effectiveFnext[r - 1][0] } };
+						//Top force
+						/*Matrix<T> Ftop = K21*d1 + K22*d2;
+						for (int i = 0; i < Ftop.Row(); i++)
+						{
+						effectiveFnext[i][0] = Ftop[i][0];
+						}*/
+
+						Matrix<T> cuteK(r - 2 * 6, r - 2 * 6);
+						Matrix<T> cuteFnext(r - 2 * 6, 1);
+						for (int i = 0; i < cuteK.Row(); i++)
+						{
+							cuteFnext[i][0] = effectiveFnext[i][0];
+							for (int j = 0; j < cuteK.Column(); j++)
+							{
+								cuteK[i][j] = effectiveK[i][j];
+							}
+						}
+
+						Matrix<T> cutednext = (cuteK^-1)*cuteFnext;
+						for (int i = 0; i < cutednext.Row(); i++)
+						{
+							dnext[i][0] = cutednext[i][0];
+						}
+
+						/*
+
+						for (int t = r / 6 - 1; t >= 2; t--)
+						{
+							for (int j = 0; j < 6; j++)
+							{
+								d0[j][0] = dnext[(t - 2) * 6 + j][0];
+								d1[j][0] = dnext[(t - 1) * 6 + j][0];
+								d2[j][0] = dnext[t * 6 + j][0];
+								F0[j][0] = effectiveFnext[(t - 2) * 6 + j][0];
+								F1[j][0] = effectiveFnext[(t - 1) * 6 + j][0];
+								F2[j][0] = effectiveFnext[t * 6 + j][0];
+							}
+
+							for (int i = 0; i < 6; i++)
+							{
+								for (int j = 0; j < 6; j++)
+								{
+									K00[i][j] = effectiveK[(t - 2) * 6 + i][(t - 2) * 6 + j];
+									K01[i][j] = effectiveK[(t - 2) * 6 + i][(t - 1) * 6 + j];
+									K10[i][j] = effectiveK[(t - 1) * 6 + i][(t - 2) * 6 + j];
+									K11[i][j] = effectiveK[(t - 1) * 6 + i][(t - 1) * 6 + j];
+									K12[i][j] = effectiveK[(t - 1) * 6 + i][t * 6 + j];
+									K21[i][j] = effectiveK[t * 6 + i][(t - 1) * 6 + j];
+									K22[i][j] = effectiveK[t * 6 + i][t * 6 + j];
+								}
+							}
+
+							d0 = (K10^-1)*(F1 - K11*d1 - K12*d2);
+							for (int j = 0; j < 6; j++)
+							{
+								dnext[(t - 2) * 6 + j][0] = d0[j][0];
+							}
+							
+							if (t == 2)
+							{
+								d0 = (K00^-1)*(F0 - K01*d1);
+								for (int j = 0; j < 6; j++)
+								{
+									dnext[(t - 2) * 6 + j][0] = d0[j][0];
+								}
+							}
+						}
+						*/					
+					};
+					//nBottom();
+					//nCut();
+					//this->NodeIterationBottom(effectiveK, dnext, effectiveFnext);
 					this->NodeIteration(effectiveK, dnext, effectiveFnext);
 
 					auto nFast = [&]() {
@@ -1061,6 +1271,8 @@ namespace ComputationalMechanicsLibrary
 			public:
 				SpatialBeamElement<T> *element;
 
+				SpatialBeamSolver<T> *solver;
+
 				T g = 9.8;
 				T densitySuckerRod;
 				T densityCentralizer;
@@ -1245,7 +1457,7 @@ namespace ComputationalMechanicsLibrary
 						this->element->Acceleration()[t][0][0] = At[0][t];
 					}
 
-					WriteMatrixToCSV("Atop.csv", At);
+					//WriteMatrixToCSV("Atop.csv", At);
 					
 				}
 				/**
@@ -1263,15 +1475,37 @@ namespace ComputationalMechanicsLibrary
 					Vt = InterpolationDerivation(Dt);
 					Matrix<T> At(2, m.Column());
 					At = InterpolationDerivation(Vt);
-
 					for (int t = 0; t < m.Column(); t++)
 					{
-						this->element->Force()[t][0][0] = m[0][t];
-						this->element->Displacement()[t][0][0] = m[1][t];
-						this->element->Velocity()[t][0][0] = Vt[0][t];
-						this->element->Acceleration()[t][0][0] = At[0][t];
+						//this->element->Force()[t][6][0] = m[0][t];
+						this->element->Displacement()[t][6][0] = m[1][t];
+						this->element->Velocity()[t][6][0] = Vt[0][t];
+						this->element->Acceleration()[t][6][0] = At[0][t];
 					}
+					int t = 0;
+					this->solver->NodeIterationBottomFunctions.push_back([&](Matrix<T> &K, Matrix<T> &F, Matrix<T> &d) {
+						int n = F.Row();
 
+						for (int t = 0; t < m.Column(); t++)
+						{
+							T fn = (this->solver->Stiffness() * this->solver->Displacement()[t])[n - 6][0];
+
+							this->solver->Force()[t][0][0] = m[0][t] - fn;
+						}
+
+					});
+
+
+
+					/*
+					for (int t = 0; t < m.Column(); t++)
+					{
+						Matrix<T> Fn = this->element->Stiffness()*this->element->Displacement()[t];
+
+						//only index 0?
+						top->Force()[t][0][0] = m[0][t] - Fn[6][0];
+					}
+					*/
 					WriteMatrixToCSV("Aend.csv", At);
 
 				}
@@ -1319,6 +1553,7 @@ namespace ComputationalMechanicsLibrary
 
 				Matrix<T> PumpWorkBuild()
 				{
+					WriteMatrixToCSV("Stiffness.csv",this->solver->Stiffness());
 					Matrix<T> fs(2, this->solver->Force().size());
 					for (int t = 0; t < fs.Column(); t++)
 					{
@@ -1330,6 +1565,306 @@ namespace ComputationalMechanicsLibrary
 					return fs;
 				}
 
+				Matrix<T> CrankRotatingSpeed(T R1,T R2,T r)
+				{
+					Matrix<T> rotatingSpeed(2, this->solver->Velocity()->size());
+
+					for (int t = 0; t < this->solver->Velocity()->size(); t++)
+					{
+						rotatingSpeed[0][t] = t*this->solver->TimeInterval();
+						rotatingSpeed[1][t] = 30 * R1*this->solver->Velocity()[t][0][0] / M_PI / R2 / r;
+					}
+					
+					return rotatingSpeed;
+				}
+
+				Matrix<T> SuspensionDisplacementToMotorAngle(T r, T R1, T R2, T H, T W, T L, Matrix<T> displacement)
+				{
+					Matrix<T> angle = displacement;
+					for (int i = 0; i < displacement.Column(); i++)
+					{
+						T d = displacement[1][i];
+						T phi0 = std::atan(W / H) + std::acos((W*W + H*H + R1*R1 - (L - r)*(L - r)) / (2 * R1*std::sqrt(W*W + H*H)));
+						T phi = d / R2 + phi0;
+						T H1 = H - R1*std::cos(phi);
+						T W1 = W - R1*std::sin(phi);
+						T theta1 = std::acos((H1*H1 - L*L + W1*W1 + r*r) / (2 * r*std::sqrt(W1*W1 + H1*H1)));
+						T theta2 = std::atan(H1 / W1);
+
+						if(displacement[1][i-1]<d|| i == 0 )
+						{
+							angle[1][i] = M_PI/2 - theta1 + theta2;
+						}
+						else
+						{
+							angle[1][i] = M_PI/2 + theta1 + theta2;
+						}
+
+					}
+
+					return angle;
+				}
+
+				Matrix<T> Differential(Matrix<T> fx)
+				{
+					Matrix<T> dfx = fx;
+					//back 2 points
+					dfx[1][0] = (fx[1][1] - fx[1][0]) / (fx[0][1] - fx[0][0]);
+					for (int i = 1; i < fx.Column() - 1; i++)
+					{
+						//3 points
+						dfx[1][i] = (fx[1][i + 1] - fx[1][i - 1]) / (fx[0][i + 1] - fx[0][i - 1]);
+					}
+					//front 2 points
+					dfx[1][fx.Column()-1]= (fx[1][fx.Column() - 1] - fx[1][fx.Column() - 2]) / (fx[0][fx.Column() - 1] - fx[0][fx.Column() - 2]);
+
+					return dfx;
+				}
+
+				Multinomial<T> TaylorExpandWalkingBeamAngleToMotorRotationalVelocity(T r, T R1, T R2, T H, T W, T L,bool up=true)
+				{
+					auto fUp = [&](T phi)->T {
+						T phi0 = std::atan(W / H) + std::acos((W*W + H*H + R1*R1 - (L - r)*(L - r)) / (2 * R1*std::sqrt(W*W + H*H)));
+						T phi1 = std::atan(W / H) + std::acos((W*W + H*H + R1*R1 - (L + r)*(L + r)) / (2 * R1*std::sqrt(W*W + H*H)));
+						T H1 = H - R1*std::sin(M_PI / 2 - phi);
+						T W1 = W - R1*std::cos(M_PI / 2 - phi);
+						T theta1 = std::acos((H1*H1 - L*L + W1*W1 + r*r) / (2 * r*std::sqrt(W1*W1 + H1*H1)));
+						T theta2 = std::atan(H1 / W1);
+
+						return M_PI / 2 - theta1 + theta2;
+					};
+					auto fDown = [&](T phi)->T {
+						T phi0 = std::atan(W / H) + std::acos((W*W + H*H + R1*R1 - (L - r)*(L - r)) / (2 * R1*std::sqrt(W*W + H*H)));
+						T phi1 = std::atan(W / H) + std::acos((W*W + H*H + R1*R1 - (L + r)*(L + r)) / (2 * R1*std::sqrt(W*W + H*H)));
+						T H1 = H + R1*std::sin(phi - M_PI / 2);
+						T W1 = W - R1*std::sin(phi - M_PI / 2);
+						T theta1 = std::acos((H1*H1 - L*L + W1*W1 + r*r) / (2 * r*std::sqrt(W1*W1 + H1*H1)));
+						T theta2 = std::atan(H1 / W1);
+
+						return M_PI / 2 + theta1 + theta2;
+					};
+
+					T expandXUp = 1;
+					T expandXDown = 1;
+					int expandN = 4;
+					T deltaX = 0.0001;
+					Multinomial<T> result(expandN);
+					std::function<T(T, int, std::function<T(T)>, T)> dfn;
+					dfn = [&dfn](T x, int n,std::function<T(T)> f,T dx)->T {
+						if (n == 0)
+						{
+							return f(x);
+						}
+						else
+						{
+							return (dfn(x + dx, n - 1, f,dx) - dfn(x, n - 1, f,dx)) / dx;
+						}
+					};
+
+					std::function<T(T)> nnn;
+					nnn = [&nnn](T n)->T {
+						if (n <= 1)
+						{
+							return 1;
+						}
+						else
+						{
+							return nnn(n - 1)*n;
+						}
+					};
+
+					for (int i = 0; i < expandN; i++)
+					{
+						if (up == true)
+						{
+							result.coefficients[i] = dfn(expandXUp, i, fUp, deltaX) / nnn(i);
+						}
+						else
+						{
+							result.coefficients[i] = dfn(expandXDown, i, fDown, deltaX) / nnn(i);
+						}
+					}
+
+					return result;
+				}
+			
+				static void MotorRotationalVelocityWithWalkingBeamAngle(T r, T R1, T R2, T H, T W, T L, Matrix<T> phi_t_Up, Matrix<T> phi_t_Down, Matrix<T> &omega_phi_Up, Matrix<T> &omega_phi_Down)
+				{
+					auto fUp = [&](T phi)->T {
+						T phi0 = std::atan(W / H) + std::acos((W*W + H*H + R1*R1 - (L - r)*(L - r)) / (2 * R1*std::sqrt(W*W + H*H)));
+						T phi1 = std::atan(W / H) + std::acos((W*W + H*H + R1*R1 - (L + r)*(L + r)) / (2 * R1*std::sqrt(W*W + H*H)));
+						T H1 = H - R1*std::sin(M_PI / 2 - phi);
+						T W1 = W - R1*std::cos(M_PI / 2 - phi);
+						T theta1 = std::acos((H1*H1 - L*L + W1*W1 + r*r) / (2 * r*std::sqrt(W1*W1 + H1*H1)));
+						T theta2 = std::atan(H1 / W1);
+
+						return M_PI / 2 - theta1 + theta2;
+					};
+					auto fDown = [&](T phi)->T {
+						T phi0 = std::atan(W / H) + std::acos((W*W + H*H + R1*R1 - (L - r)*(L - r)) / (2 * R1*std::sqrt(W*W + H*H)));
+						T phi1 = std::atan(W / H) + std::acos((W*W + H*H + R1*R1 - (L + r)*(L + r)) / (2 * R1*std::sqrt(W*W + H*H)));
+						T H1 = H + R1*std::sin(phi - M_PI / 2);
+						T W1 = W - R1*std::sin(phi - M_PI / 2);
+						T theta1 = std::acos((H1*H1 - L*L + W1*W1 + r*r) / (2 * r*std::sqrt(W1*W1 + H1*H1)));
+						T theta2 = std::atan(H1 / W1);
+
+						return M_PI / 2 + theta1 + theta2;
+					};
+
+
+					SpatialBeamSolver<T>* spsolver = nullptr;
+					SpatialBeamPostprocessor<T> sppost(spsolver);
+					//Multinomial<T> theta_phi_Up = sppost.TaylorExpandWalkingBeamAngleToMotorRotationalVelocity(r, R1, R2, H, W, L);
+					//Multinomial<T> theta_phi_Down = sppost.TaylorExpandWalkingBeamAngleToMotorRotationalVelocity(r, R1, R2, H, W, L, false);
+
+					Matrix<T> theta_t_Up = phi_t_Up;
+					Matrix<T> theta_t_Down = phi_t_Down;
+
+					for (int i = 0; i < phi_t_Up.Column(); i++)
+					{
+						theta_t_Up[1][i] = fUp(phi_t_Up[1][i]);
+					}
+					for (int i = 0; i < phi_t_Down.Column(); i++)
+					{
+						theta_t_Down[1][i] = fDown(phi_t_Down[1][i]);
+					}
+					Matrix<T> omega_t_Up = Differentiation(theta_t_Up);
+					Matrix<T> omega_t_Down = Differentiation(theta_t_Up);
+
+					omega_phi_Up = omega_t_Up;
+					omega_phi_Down = omega_t_Down;
+					for (int i = 0; i < omega_phi_Up.Column(); i++)
+					{
+						omega_phi_Up[0][i] = phi_t_Up[1][i];
+					}
+					for (int i = 0; i < omega_phi_Down.Column(); i++)
+					{
+						omega_phi_Down[0][i] = phi_t_Down[1][i];
+					}
+
+
+
+				}
+
+				static void MotorRotationalVelocityWithWalkingBeamAngle(T r, T R1, T R2, T H, T W, T L, std::function<T(T)> func, Matrix<T> &o_p_m, Matrix<T> &o_p_mDown, Multinomial<T> &omega_phi, Multinomial<T> &omega_phiDown)
+				{
+
+					SpatialBeamSolver<T>* spsolver = nullptr;
+					SpatialBeamPostprocessor<T> sppost(spsolver);
+
+					Multinomial<T> m = sppost.TaylorExpandWalkingBeamAngleToMotorRotationalVelocity(r, R1, R2, H, W, L);
+					Multinomial<T> dm = m.Differentiate();
+					Multinomial<T> mDown = sppost.TaylorExpandWalkingBeamAngleToMotorRotationalVelocity(r, R1, R2, H, W, L, false);
+					Multinomial<T> dmDown = mDown.Differentiate();
+
+					Matrix<T> m_Mul(1,m.n);
+					for (int i = 0; i < m_Mul.Column(); i++)
+					{
+						m_Mul[0][i] = m.coefficients[i];
+					}
+					WriteMatrixToCSV("m_Mul.csv", m_Mul);
+
+					std::function<T(T)> sPhi = func;
+
+					Multinomial<T> sxnPhi = Taylor<T>(sPhi, 0, 3);
+					Multinomial<T> sxndPhi = sxnPhi.Differentiate();
+
+					Matrix<T> dPhi_Phi_points(2, 100);
+					for (int i = 0; i < dPhi_Phi_points.Column(); i++)
+					{
+						dPhi_Phi_points[0][i] = sPhi(M_PI / 100 * i);
+						dPhi_Phi_points[1][i] = NumericalDifferentiation<T>(M_PI / 100 * i, 1, sPhi, 0.0001);
+					}
+					Matrix<T> dPhi_Phi_Down_points(2, 100);
+					for (int i = 0; i < dPhi_Phi_Down_points.Column(); i++)
+					{
+						dPhi_Phi_Down_points[0][i] = sPhi(M_PI + M_PI / 100 * i);
+						dPhi_Phi_Down_points[1][i] = NumericalDifferentiation<T>(M_PI + M_PI / 100 * i, 1, sPhi, 0.0001);
+					}
+					WriteMatrixToCSV("dphi_phi_points.csv", dPhi_Phi_points);
+					WriteMatrixToCSV("dphi_phi_down_points.csv", dPhi_Phi_Down_points);
+					Multinomial<T> dPhi_Phi = LeastSquaresMethodToMultinomial(dPhi_Phi_points, 4);
+					Multinomial<T> dPhi_Phi_Down = LeastSquaresMethodToMultinomial(dPhi_Phi_Down_points, 4);
+
+					/*
+					Matrix<T> dPhi_Phi_Up(2, 100);
+					for (int i = 0; i < dPhi_Phi_Up.Column(); i++)
+					{
+					dPhi_Phi_Up[0][i] = 0.6979 + (2.3094 - 0.6979) / 100 * i;
+					dPhi_Phi_Up[1][i] = dPhi_Phi_Up.Solve(o_p_mDown[0][i] - 1);
+					}
+					*/
+
+					Matrix<T> dp_p_m(2, 100);
+					for (int i = 0; i < dp_p_m.Column(); i++)
+					{
+						dp_p_m[0][i] = 0.88556 + (2.10221 - 0.88556) / 100 * i;
+						dp_p_m[1][i] = dPhi_Phi.Solve(dp_p_m[0][i]);
+					}
+
+					Matrix<T> dp_p_mDown(2, 100);
+					for (int i = 0; i < dp_p_mDown.Column(); i++)
+					{
+						dp_p_mDown[0][i] = 0.88556 + (2.10221 - 0.88556) / 100 * i;
+						dp_p_mDown[1][i] = dPhi_Phi_Down.Solve(dp_p_mDown[0][i]);
+					}
+					WriteMatrixToCSV("dp_p.csv", dp_p_m);
+					WriteMatrixToCSV("dp_pDown.csv", dp_p_mDown);
+					//-std::asin((1-1.5037)/0.8057)
+					//Multinomial<T> dPhi_Phi = Taylor<T>([&](T t) {return sxnPhi.Solve(t); }, [&](T t) {return sxndPhi.Solve(t); }, M_PI - std::acos((1 - 1.5037) / -0.8057),4);
+					//Multinomial<T> dPhi_PhiDown = Taylor<T>([&](T t) {return sxnPhi.Solve(t); }, [&](T t) {return sxndPhi.Solve(t); }, std::acos((1 - 1.5037) / -0.8057),4);
+					Multinomial<T> dm_ex = dm.X0Expand(-1);
+					Multinomial<T> dmDown_ex = dmDown.X0Expand(-1);
+					omega_phi = dm_ex.Multiply(dPhi_Phi);
+					omega_phiDown = dmDown_ex.Multiply(dPhi_Phi_Down);
+
+					o_p_m = Matrix<T>(2, 100);
+					for (int i = 0; i < o_p_m.Column(); i++)
+					{
+						o_p_m[0][i] = 0.88556 + (2.10221 - 0.88556) / 100 * i;
+						o_p_m[1][i] = omega_phi.Solve(o_p_m[0][i]);
+					}
+
+					o_p_mDown = Matrix<T>(2, 100);
+					for (int i = 0; i < o_p_mDown.Column(); i++)
+					{
+						o_p_mDown[0][i] = 0.88556 + (2.10221 - 0.88556) / 100 * i;
+						o_p_mDown[1][i] = omega_phiDown.Solve(o_p_mDown[0][i]);
+					}
+
+					std::function<T(T)> m_t = [&](T t) {
+						return m.Solve(sPhi(t));
+					};
+					Matrix<T> m_t_m(2, 100);
+					for (int i = 0; i < m_t_m.Column(); i++)
+					{
+						m_t_m[0][i] = 0 + M_PI / 100 * i;
+						m_t_m[1][i] = m_t(m_t_m[0][i]);
+					}
+
+					Multinomial<T> m_t_T = Taylor<T>(m_t, 0, 4);
+					Matrix<T> m_t_T_m(2, 100);
+					for (int i = 0; i < m_t_T_m.Column(); i++)
+					{
+						m_t_T_m[0][i] = 0 + M_PI / 100 * i;
+						m_t_T_m[1][i] = m_t_T.Solve(m_t_T_m[0][i] - 0);
+					}
+
+					Multinomial<T> mmm = Taylor<T>([&](T x) {return std::sin(x + 5); }, 1.5, 4);
+					Matrix<T> mmm_m(2, 100);
+					for (int i = 0; i < mmm_m.Column(); i++)
+					{
+						mmm_m[0][i] = 0 + M_PI / 100 * i;
+						mmm_m[1][i] = mmm.Solve(mmm_m[0][i] - 1.5);
+					}
+
+					WriteMatrixToCSV("mmm_m.csv", mmm_m);
+					WriteMatrixToCSV("m_t_T.csv", m_t_T_m);
+					WriteMatrixToCSV("m_t.csv", m_t_m);
+					WriteMatrixToCSV("o_p.csv", o_p_m);
+					WriteMatrixToCSV("o_pDown.csv", o_p_mDown);
+
+				}
 			private:
 
 			protected:

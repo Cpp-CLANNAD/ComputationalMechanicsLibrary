@@ -165,7 +165,7 @@ namespace ComputationalMechanicsLibrary
             this->array[0] = new T[_row*_row]{0};
             for (int j = 0; j < _row; j++)
             {
-                this->array[0][j] = ((T*)arr)[0 * _row + j];
+                this->array[0][j] = ((T*)this->array)[0 * _row + j];
             }
             for(int i=0;i<_row;i++)
             {
@@ -242,11 +242,11 @@ namespace ComputationalMechanicsLibrary
 		}
 
 		/// <summary>
-		/// Determinat
+		/// Determinant
 		/// </summary>
 		/// <param name="method">The method.</param>
 		/// <returns>this matrix's determinat</returns>
-		T Determinat(InverseMethod method = InverseMethod::GaussJordan)
+		T Determinant(InverseMethod method = InverseMethod::GaussJordan)
 		{
 			T result;
 			try
@@ -254,10 +254,10 @@ namespace ComputationalMechanicsLibrary
 				switch (method)
 				{
 				case InverseMethod::GaussJordan:
-					result = this->DeterminatGaussJordan();
+					result = this->DeterminantGaussJordan();
 					break;
 				default:
-					result = this->DeterminatGaussJordan();
+					result = this->DeterminantGaussJordan();
 					break;
 				}
 
@@ -338,7 +338,7 @@ namespace ComputationalMechanicsLibrary
 							temp.array[x][y] = this->array[x < i ? x : x + 1][y < j ? y : y + 1];
 						}
 					}
-					result.array[j][i] = ((i + j) % 2 == 0 ? 1 : -1) * temp.Determinat();
+					result.array[j][i] = ((i + j) % 2 == 0 ? 1 : -1) * temp.Determinant();
 				}
 			}
 
@@ -412,6 +412,107 @@ namespace ComputationalMechanicsLibrary
 				}
 			}
 			return result;
+		}
+
+		Matrix<T> GeneralizedInverse()
+		{
+			if (this->row == this->column)
+			{
+				return this->Inverse();
+			}
+			else if (this->row > this->column)
+			{
+				Matrix<T> A(this->column, this->column);
+				Matrix<T> B(this->row - this->column, this->column);
+				for (int i = 0; i < this->row; i++)
+				{
+					for (int j = 0; j < this->column; j++)
+					{
+						if (i < this->column)
+						{
+							A[i][j] = this->array[i][j];
+						}
+						else
+						{
+							B[i-this->column][j] = this->array[i][j];
+						}
+					}
+				}
+
+				Matrix<T> E(this->column,this->column);
+				for (int i = 0; i < E.Row(); i++)
+				{
+					E[i][i] = 1;
+				}
+				WriteMatrixToCSV("A.csv", A);
+				Matrix<T> BAi = B*(A^-1);
+
+				Matrix<T> D = A;
+				Matrix<T> C(this->row, this->column);
+				for (int i = 0; i < this->row; i++)
+				{
+					for (int j = 0; j < this->column; j++)
+					{
+						if (i < this->column)
+						{
+							C[i][j] = E[i][j];
+						}
+						else
+						{
+							C[i][j] = BAi[i - this->column][j];
+						}
+					}
+				}
+
+				Matrix<T> result = D.Transport()*((D*D.Transport()) ^ -1)*((C.Transport()*C) ^ -1)*C.Transport();
+				return result;
+
+			}
+			else
+			{
+				Matrix<T> A(this->row, this->row);
+				Matrix<T> B(this->row, this->column - this->row);
+				for (int i = 0; i < this->row; i++)
+				{
+					for (int j = 0; j < this->column; j++)
+					{
+						if (j < this->row)
+						{
+							A[i][j] = this->array[i][j];
+						}
+						else
+						{
+							B[i][j- this->row] = this->array[i][j];
+						}
+					}
+				}
+
+				Matrix<T> E(this->column, this->column);
+				for (int i = 0; i < E.Row(); i++)
+				{
+					E[i][i] = 1;
+				}
+				Matrix<T> AiB = (A^-1)*B;
+
+				Matrix<T> C = A;
+				Matrix<T> D(this->row, this->column);
+				for (int i = 0; i < this->row; i++)
+				{
+					for (int j = 0; j < this->column; j++)
+					{
+						if (j < this->row)
+						{
+							D[i][j] = E[i][j];
+						}
+						else
+						{
+							D[i][j] = AiB[i][j - this->row];
+						}
+					}
+				}
+				Matrix<T> result = D.Transport()*((D*D.Transport()) ^ -1)*((C.Transport()*C) ^ -1)*C.Transport();
+				return result;
+			}
 		}
 
 		/// <summary>
@@ -723,7 +824,7 @@ namespace ComputationalMechanicsLibrary
 					}
 				}
 
-				if (max < 1.0e-12)
+				if (max < 1.0e-24)
 				{   //! 无逆矩阵
 					delete[] jr;
 					delete[] jc;
@@ -791,12 +892,12 @@ namespace ComputationalMechanicsLibrary
 			return result;
 		}
 		/// <summary>
-		/// Determinat by the Gauss Jordan method
+		/// Determinant by the Gauss Jordan method
 		/// </summary>
 		/// <returns>
 		/// this matrix's determinat
 		/// </returns>
-		T DeterminatGaussJordan()
+		T DeterminantGaussJordan()
 		{
 			//阶数
 			int n = this->CheckSquare() ? this->row : throw std::exception("not a square");			
@@ -900,10 +1001,15 @@ namespace ComputationalMechanicsLibrary
 			return resultD;
 
 		}
+
+
+		
 	protected:
 
 	};
 
+	//Now the CSV file is stdand , the last in line(row) crlf without comma
+	//Please don't use quote
 
 	template<typename T>
 	void WriteMatrixToCSV(std::string filename, ComputationalMechanicsLibrary::Matrix<T> &matrix)
@@ -912,10 +1018,11 @@ namespace ComputationalMechanicsLibrary
 
 		for (int i = 0; i < matrix.Row(); i++)
 		{
-			for (int j = 0; j < matrix.Column(); j++)
+			for (int j = 0; j < matrix.Column()-1; j++)
 			{
 				outfile << matrix[i][j] << ",";
 			}
+			outfile << matrix[i][matrix.Column() - 1];
 			outfile << "\n";
 		}
 
@@ -927,13 +1034,43 @@ namespace ComputationalMechanicsLibrary
 	{
 		std::ifstream infile(filename);
 
+		
+		std::ifstream inFileRow(filename);
+		std::string  s;
+		int row = 0;
+		int column = 0;
+		bool ifColumn = false;
+		while (getline(inFileRow, s))
+		{
+			row++;
+			if (ifColumn == false)
+			{
+				column = 0;
+				for (int i = 0; i < s.length(); i++)
+				{
+					if (s[i] == ',')
+					{
+						column++;
+					}
+				}
+				column++;
+
+				ifColumn = true;
+			}
+
+		}
+
+
+		matrix = Matrix<T>(row, column);
+
 		char d;
 		for (int i = 0; i < matrix.Row(); i++)
 		{
-			for (int j = 0; j < matrix.Column(); j++)
+			for (int j = 0; j < matrix.Column()-1; j++)
 			{
 				infile >> matrix[i][j] >> d;
 			}
+			infile >> matrix[i][matrix.Column() - 1];
 			//infile >> d;
 		}
 

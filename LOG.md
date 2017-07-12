@@ -1,3 +1,9 @@
+# v0.3.0.20170712_Alpha
+## Multionmial
+add multionmial calculation
+
+and others
+
 # v0.2.1.20170420_Alpha
 ## Matrix
 full matrix

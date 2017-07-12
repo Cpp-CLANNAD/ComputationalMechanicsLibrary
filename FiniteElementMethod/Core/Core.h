@@ -6,7 +6,10 @@
 #else
 #define M_PI 3.14159265358979323846
 #endif
-
+#ifdef M_E
+#else
+#define M_E 2.71828182845904523536
+#endif
 namespace ComputationalMechanicsLibrary
 {
 	namespace FiniteElementMethod
