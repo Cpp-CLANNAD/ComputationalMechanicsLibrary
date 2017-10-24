@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdlib>
+#include <string>
 #include <exception>
 #include <initializer_list>
 #include <vector>
@@ -1040,7 +1041,7 @@ namespace ComputationalMechanicsLibrary
 		int row = 0;
 		int column = 0;
 		bool ifColumn = false;
-		while (getline(inFileRow, s))
+		while (std::getline(inFileRow, s))
 		{
 			row++;
 			if (ifColumn == false)

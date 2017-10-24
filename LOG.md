@@ -1,3 +1,10 @@
+# v0.4.0.20171024_Alpha
+## Vector
+add vector calculation
+not completed
+
+and others
+
 # v0.3.0.20170712_Alpha
 ## Multionmial
 add multionmial calculation
