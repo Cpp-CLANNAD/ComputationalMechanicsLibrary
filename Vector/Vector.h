@@ -11,8 +11,8 @@ namespace ComputationalMechanicsLibrary
 
 		enum VectorType
 		{
-			Row,
-			Column
+			Row = 0,
+			Column = 1
 		};
 
 		Vector(const VectorType _type = VectorType::Row)
@@ -35,13 +35,7 @@ namespace ComputationalMechanicsLibrary
 
 		Vector(const Vector<T>& _vector)
 		{
-			this->array = new T[_vector.length];
-			this->length = _vector.length;
-			this->type = _vector.type;
-			for (int i = 0; i < this->length; i++)
-			{
-				this->array[i] = _vector.array[i];
-			}
+			this->FullArray(_vector);
 		}
 
 		Vector(const T _array[], const size_t _length,const VectorType _type = VectorType::Row)
@@ -77,19 +71,19 @@ namespace ComputationalMechanicsLibrary
 			}
 		}
 
-		T* Array()
+		T* Array() const
 		{
 			return this->array;
 		}
 
-		VectorType Type()
+		VectorType Type() const
 		{
 			return this->type;
 		}
 
-		size_t Length()
+		size_t Length() const
 		{
-			return this->length;
+			return (this->length);
 		}
 
 		~Vector()
@@ -261,12 +255,66 @@ namespace ComputationalMechanicsLibrary
 			return result;
 		}
 
+		Vector<T>& operator =(const Vector<T>& _vector) const
+		{
+			this->FullArray(_vector);
+			return *this;
+		}
+		
+		bool operator == (const Vector<T>& _vector) const
+		{
+			if (this->type != _vector.type)
+			{
+				return false;
+			}
+			if (this->length != _vector.length)
+			{
+				return false;
+			}
+			for (size_t i = 0; i < this->length; i++)
+			{
+				if (this->array[i] != _vector[i])
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		friend Vector<T> operator + (Vector &a, const Vector<T> &b)
+		{
+			return a.Add(b);
+		}
+
+		friend Vector<T> operator - (Vector &a, const Vector<T> &b)
+		{
+			return a.Subtract(b);
+		}
+
+		friend Vector<T> operator * (Vector &a, const Vector<T> &b)
+		{
+			return a.ScalarProduct(b);
+		}
+
 	protected:
 
 	private:
 		T* array;
 		VectorType type;
 		size_t length;
+
+
+		void FullArray(const ComputationalMechanicsLibrary::Vector<T> & _vector)
+		{
+			this->array = new T[_vector.length];
+			this->length = _vector.length;
+			this->type = _vector.type;
+			for (int i = 0; i < this->length; i++)
+			{
+				this->array[i] = _vector.array[i];
+			}
+		}
 	};
 
 	template<typename T>
@@ -286,4 +334,5 @@ namespace ComputationalMechanicsLibrary
 	{
 		return _vector1.IncludedAngle(_vector2);
 	}
+
 }

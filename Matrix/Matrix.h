@@ -7,6 +7,9 @@
 
 #include <iostream>
 #include <fstream>
+
+#include "../Vector/Vector.h"
+
 namespace ComputationalMechanicsLibrary
 {
 	/// <summary>
@@ -65,11 +68,11 @@ namespace ComputationalMechanicsLibrary
 		/// </summary>
 		/// <param name="_row">The row.</param>
 		/// <param name="_column">The column.</param>
-		Matrix(int _row, int _column)
+		Matrix(size_t _row, size_t _column)
 		{
             this->array = new T*[_row];
 			this->array[0] = new T[_row*_column]{ 0 };
-			for (int i = 1; i < _row; i++)
+			for (size_t i = 1; i < _row; i++)
 			{
 				this->array[i] = this->array[i - 1] + _column;
 			}
@@ -82,18 +85,18 @@ namespace ComputationalMechanicsLibrary
 		/// <param name="arr">The arr.</param>
 		/// <param name="_row">The array's row.</param>
 		/// <param name="_column">The array's column.</param>
-		Matrix(T** arr, int _row, int _column)
+		Matrix(T** arr, size_t _row, size_t _column)
 		{
 			this->array = new T*[_row];
 			this->array[0] = new T[_row*_column];
-			for (int j = 0; j < _column; j++)
+			for (size_t j = 0; j < _column; j++)
 			{
 				this->array[0][j] = arr[0][j];
 			}
-			for (int i = 1; i < _row; i++)
+			for (size_t i = 1; i < _row; i++)
 			{
 				this->array[i] = this->array[i - 1] + _column;
-				for (int j = 0; j < _column; j++)
+				for (size_t j = 0; j < _column; j++)
 				{
 					this->array[i][j] = arr[i][j];
 				}
@@ -107,18 +110,18 @@ namespace ComputationalMechanicsLibrary
 		/// <param name="arr">The arr.</param>
 		Matrix(std::vector<std::vector<T>> arr)
 		{
-			int _row = arr.size();
-			int _column = arr[0].size();
+			size_t _row = arr.size();
+			size_t _column = arr[0].size();
 			this->array = new T*[_row];
 			this->array[0] = new T[_row*_column];
-			for (int j = 0; j < _column; j++)
+			for (size_t j = 0; j < _column; j++)
 			{
 				this->array[0][j] = arr[0][j];
 			}
-			for (int i = 1; i < _row; i++)
+			for (size_t i = 1; i < _row; i++)
 			{
 				this->array[i] = this->array[i - 1] + _column;
-				for (int j = 0; j < _column; j++)
+				for (size_t j = 0; j < _column; j++)
 				{
 					this->array[i][j] = arr[i][j];
 				}
@@ -132,18 +135,18 @@ namespace ComputationalMechanicsLibrary
 		/// <param name="arr">The arr.</param>
 		Matrix(std::initializer_list<std::initializer_list<T>> arr)
 		{
-			int _row = arr.size();
-			int _column = (arr.begin())->size();
+			size_t _row = arr.size();
+			size_t _column = (arr.begin())->size();
 			this->array = new T*[_row];
 			this->array[0] = new T[_row*_column];
-			for (int j = 0; j < _column; j++)
+			for (size_t j = 0; j < _column; j++)
 			{
 				this->array[0][j] = *((arr.begin())->begin()+j);
 			}
-			for (int i = 1; i < _row; i++)
+			for (size_t i = 1; i < _row; i++)
 			{
 				this->array[i] = this->array[i - 1] + _column;
-				for (int j = 0; j < _column; j++)
+				for (size_t j = 0; j < _column; j++)
 				{
 					this->array[i][j] = *((arr.begin()+i)->begin() + j);
 				}
@@ -151,6 +154,32 @@ namespace ComputationalMechanicsLibrary
 			this->row = _row;
 			this->column = _column;
 		}
+
+		Matrix<T>(const Vector<T>& _vector)
+		{
+			size_t _row = (_vector.Length() - 1)*_vector.Type() + 1;
+			size_t _column = _vector.Length()/_row;
+			this->array = new T*[_row];
+			this->array[0] = new T[_vector.Length()]{ 0 };
+			for (size_t i = 1; i < _row; i++)
+			{
+				this->array[i] = this->array[i - 1] + _column;
+			}
+
+			size_t t = 0;
+			for (size_t i = 0; i < _row; i++)
+			{
+				for (size_t j = 0; j < _column; j++)
+				{
+					this->array[i][j] = _vector.Array()[t];
+					t++;
+				}
+			}
+
+			this->row = _row;
+			this->column = _column;
+		}
+
 		/// <summary>
 		/// Finalizes an instance of the Matrix class.
 		/// </summary>
@@ -159,16 +188,16 @@ namespace ComputationalMechanicsLibrary
 			this->ClearArray();
 		}
 
-        void SetUnit(int _row)
+        void SetUnit(size_t _row)
         {
             this->destory();
             this->array = new T*[_row];
             this->array[0] = new T[_row*_row]{0};
-            for (int j = 0; j < _row; j++)
+            for (size_t j = 0; j < _row; j++)
             {
                 this->array[0][j] = ((T*)this->array)[0 * _row + j];
             }
-            for(int i=0;i<_row;i++)
+            for(size_t i=0;i<_row;i++)
             {
                 this->array[i][i]=1;
             }
@@ -184,9 +213,9 @@ namespace ComputationalMechanicsLibrary
 				throw std::exception("not align row or column");
 			}
 
-			for (int i = 0; i < this->row; i++)
+			for (size_t i = 0; i < this->row; i++)
 			{
-				for (int j = 0; j < this->column; j++)
+				for (size_t j = 0; j < this->column; j++)
 				{
 					this->array[i][j] = m[i][j];
 				}
@@ -205,7 +234,7 @@ namespace ComputationalMechanicsLibrary
 		/// Get the row.
 		/// </summary>
 		/// <returns>row</returns>
-		int Row() const
+		size_t Row() const
 		{
 			return this->row;
 		}
@@ -213,7 +242,7 @@ namespace ComputationalMechanicsLibrary
 		/// Get the Column.
 		/// </summary>
 		/// <returns>column</returns>
-		int Column() const
+		size_t Column() const
 		{
 			return this->column;
 		}
@@ -232,7 +261,7 @@ namespace ComputationalMechanicsLibrary
 		/// <param name="i">The i.</param>
 		/// <param name="j">The j.</param>
 		/// <returns></returns>
-		T at(int i, int j)
+		T at(size_t i, size_t j)
 		{
 			if (i < 0 || i >= this->row || j < 0 || j >= this->column)
 			{
@@ -303,9 +332,9 @@ namespace ComputationalMechanicsLibrary
 		Matrix<T> Transport()
 		{
 			Matrix<T> result(this->column, this->row);
-			for (int i = 0; i < result.row; i++)
+			for (size_t i = 0; i < result.row; i++)
 			{
-				for (int j = 0; j < result.column; j++)
+				for (size_t j = 0; j < result.column; j++)
 				{
 					result.array[i][j] = this->array[j][i];
 				}
@@ -319,7 +348,7 @@ namespace ComputationalMechanicsLibrary
 		Matrix<T> AdjointMatrix()
 		{
 			//阶数
-			int n = this->CheckSquare() ? this->row : throw std::exception("not a square");
+			size_t n = this->CheckSquare() ? this->row : throw std::exception("not a square");
 			//顺便把异常抛了出去
 			//制作一个伴随矩阵大小的矩阵
 			Matrix<T> result(n, n);
@@ -327,14 +356,14 @@ namespace ComputationalMechanicsLibrary
 			//存储代数余子式的矩阵（行、列数都比原矩阵少1）
 			Matrix<T> temp(n - 1, n - 1);
 			//生成伴随矩阵
-			for (int i = 0; i < n; i++)
+			for (size_t i = 0; i < n; i++)
 			{
-				for (int j = 0; j < n; j++)
+				for (size_t j = 0; j < n; j++)
 				{
 					//生成代数余子式
-					for (int x = 0; x < n-1; x++)
+					for (size_t x = 0; x < n-1; x++)
 					{
-						for (int y = 0; y < n-1; y++)
+						for (size_t y = 0; y < n-1; y++)
 						{
 							temp.array[x][y] = this->array[x < i ? x : x + 1][y < j ? y : y + 1];
 						}
@@ -358,9 +387,9 @@ namespace ComputationalMechanicsLibrary
 				throw std::exception("dimensions not equal");
 			}
 			Matrix<T> result(*this);
-			for (int i = 0; i < result.row; i++)
+			for (size_t i = 0; i < result.row; i++)
 			{
-				for (int j = 0; j < result.column; j++)
+				for (size_t j = 0; j < result.column; j++)
 				{
 					result.array[i][j] += b.array[i][j];
 				}
@@ -380,9 +409,9 @@ namespace ComputationalMechanicsLibrary
 				throw std::exception("dimensions not equal");
 			}
 			Matrix<T> result(*this);
-			for (int i = 0; i < result.row; i++)
+			for (size_t i = 0; i < result.row; i++)
 			{
-				for (int j = 0; j < result.column; j++)
+				for (size_t j = 0; j < result.column; j++)
 				{
 					result.array[i][j] -= b.array[i][j];
 				}
@@ -402,11 +431,11 @@ namespace ComputationalMechanicsLibrary
 				throw std::exception("dimension not alignment");
 			}
 			Matrix result(this->row, b.column);
-			for (int i = 0; i < result.row; i++)
+			for (size_t i = 0; i < result.row; i++)
 			{
-				for (int j = 0; j < result.column; j++)
+				for (size_t j = 0; j < result.column; j++)
 				{
-					for (int k = 0; k < this->column; k++)
+					for (size_t k = 0; k < this->column; k++)
 					{
 						result.array[i][j] += this->array[i][k] * b.array[k][j];
 					}
@@ -425,9 +454,9 @@ namespace ComputationalMechanicsLibrary
 			{
 				Matrix<T> A(this->column, this->column);
 				Matrix<T> B(this->row - this->column, this->column);
-				for (int i = 0; i < this->row; i++)
+				for (size_t i = 0; i < this->row; i++)
 				{
-					for (int j = 0; j < this->column; j++)
+					for (size_t j = 0; j < this->column; j++)
 					{
 						if (i < this->column)
 						{
@@ -441,7 +470,7 @@ namespace ComputationalMechanicsLibrary
 				}
 
 				Matrix<T> E(this->column,this->column);
-				for (int i = 0; i < E.Row(); i++)
+				for (size_t i = 0; i < E.Row(); i++)
 				{
 					E[i][i] = 1;
 				}
@@ -450,9 +479,9 @@ namespace ComputationalMechanicsLibrary
 
 				Matrix<T> D = A;
 				Matrix<T> C(this->row, this->column);
-				for (int i = 0; i < this->row; i++)
+				for (size_t i = 0; i < this->row; i++)
 				{
-					for (int j = 0; j < this->column; j++)
+					for (size_t j = 0; j < this->column; j++)
 					{
 						if (i < this->column)
 						{
@@ -473,9 +502,9 @@ namespace ComputationalMechanicsLibrary
 			{
 				Matrix<T> A(this->row, this->row);
 				Matrix<T> B(this->row, this->column - this->row);
-				for (int i = 0; i < this->row; i++)
+				for (size_t i = 0; i < this->row; i++)
 				{
-					for (int j = 0; j < this->column; j++)
+					for (size_t j = 0; j < this->column; j++)
 					{
 						if (j < this->row)
 						{
@@ -489,7 +518,7 @@ namespace ComputationalMechanicsLibrary
 				}
 
 				Matrix<T> E(this->column, this->column);
-				for (int i = 0; i < E.Row(); i++)
+				for (size_t i = 0; i < E.Row(); i++)
 				{
 					E[i][i] = 1;
 				}
@@ -497,9 +526,9 @@ namespace ComputationalMechanicsLibrary
 
 				Matrix<T> C = A;
 				Matrix<T> D(this->row, this->column);
-				for (int i = 0; i < this->row; i++)
+				for (size_t i = 0; i < this->row; i++)
 				{
-					for (int j = 0; j < this->column; j++)
+					for (size_t j = 0; j < this->column; j++)
 					{
 						if (j < this->row)
 						{
@@ -533,7 +562,7 @@ namespace ComputationalMechanicsLibrary
 		/// </summary>
 		/// <param name="b">The b.</param>
 		/// <returns></returns>
-		Matrix<T>& operator = (const Matrix<T> &b)
+		Matrix<T>& operator = (const Matrix<T> &b) const
 		{
 			this->FullArray(b);
 			return *this;
@@ -543,7 +572,7 @@ namespace ComputationalMechanicsLibrary
 		/// </summary>
 		/// <param name="b">The b.</param>
 		/// <returns></returns>
-		bool operator == (const Matrix<T> &b)
+		bool operator == (const Matrix<T> &b) const
 		{
 			if (this->row != b.row || this->column != b.column)
 			{
@@ -553,9 +582,9 @@ namespace ComputationalMechanicsLibrary
 				}
 				else if (this->array != nullptr&&b.array != nullptr)
 				{
-					for (int i = 0; i < this->row; i++)
+					for (size_t i = 0; i < this->row; i++)
 					{
-						for (int j = 0; j < this->column; j++)
+						for (size_t j = 0; j < this->column; j++)
 						{
 							if (this->array[i][j] != b.array[i][j])
 							{
@@ -610,7 +639,7 @@ namespace ComputationalMechanicsLibrary
 			if (n > 0)
 			{
 				result = a;
-				for (int i = 1; i < n; i++)
+				for (size_t i = 1; i < n; i++)
 				{
 					result = result.Multiply(a);
 				}
@@ -619,7 +648,7 @@ namespace ComputationalMechanicsLibrary
 			else if (n == 0)
 			{
 				result =Matrix<T>(a.Row(), a.Column());
-				for (int i = 0; i < result.Row(); i++)
+				for (size_t i = 0; i < result.Row(); i++)
 				{
 					result.Array()[i][i] = 1;
 				}
@@ -628,7 +657,7 @@ namespace ComputationalMechanicsLibrary
 			{
 				Matrix<T> ainv = a.Inverse();
 				result = Matrix<T>(ainv);
-				for (int i = -1; i > n; i--)
+				for (size_t i = -1; i > n; i--)
 				{
 					result = result.Multiply(ainv);
 				}
@@ -657,9 +686,9 @@ namespace ComputationalMechanicsLibrary
 		friend Matrix<T> operator * (Matrix<T> &b, T n)
 		{
 			Matrix<T> result(b);
-			for (int i = 0; i < b.Row(); i++)
+			for (size_t i = 0; i < b.Row(); i++)
 			{
-				for (int j = 0; j < b.Column(); j++)
+				for (size_t j = 0; j < b.Column(); j++)
 				{
 					result.Array()[i][j] *= n;
 				}
@@ -667,12 +696,17 @@ namespace ComputationalMechanicsLibrary
 			return result;
 		}
 
+		friend Matrix<T> operator *(Vector<T> &a, const Matrix<T> &b)
+		{
+			return Matrix<T>(a)*b;
+		}
+
 		/// <summary>
 		/// matrix[i][j]===>>>matrix.array[i][j]
 		/// </summary>
 		/// <param name="i">The i.</param>
 		/// <returns></returns>
-		T* operator [] (int i)
+		T* operator [] (size_t i)
 		{
 			return this->array[i];
 		}
@@ -700,11 +734,11 @@ namespace ComputationalMechanicsLibrary
 		/// <summary>
 		/// The row
 		/// </summary>
-		int row;
+		size_t row;
 		/// <summary>
 		/// The column
 		/// </summary>
-		int column;
+		size_t column;
 		/// <summary>
 		/// point to the store array
 		/// </summary>
@@ -734,14 +768,14 @@ namespace ComputationalMechanicsLibrary
 			this->ClearArray();
             this->array = new T*[a.row];
 			this->array[0] = new T[(a.row)*(a.column)];
-			for (int j = 0; j < a.column; j++)
+			for (size_t j = 0; j < a.column; j++)
 			{
 				this->array[0][j] = a.array[0][j];
 			}
-			for (int i = 1; i < a.row; i++)
+			for (size_t i = 1; i < a.row; i++)
 			{
 				this->array[i] = (this->array[i - 1]) + (a.column);
-				for (int j = 0; j < a.column; j++)
+				for (size_t j = 0; j < a.column; j++)
 				{
 					this->array[i][j] = a.array[i][j];
 				}
@@ -754,10 +788,10 @@ namespace ComputationalMechanicsLibrary
 		/// </summary>
 		/// <param name="i">one row</param>
 		/// <param name="j">another row</param>
-		void SwapRowSelf(int i, int j)
+		void SwapRowSelf(size_t i, size_t j)
 		{
 			T temp;
-			for (int k = 0; k < this->column; k++)
+			for (size_t k = 0; k < this->column; k++)
 			{
 				temp = this->array[i][k];
 				this->array[i][k] = this->array[j][k];
@@ -769,10 +803,10 @@ namespace ComputationalMechanicsLibrary
 		/// </summary>
 		/// <param name="i">one column</param>
 		/// <param name="j">another column</param>
-		void SwapColumnSelf(int i, int j)
+		void SwapColumnSelf(size_t i, size_t j)
 		{
 			T temp;
-			for (int k = 0; k < this->row; k++)
+			for (size_t k = 0; k < this->row; k++)
 			{
 				temp = this->array[k][i];
 				this->array[k][i] = this->array[k][j];
@@ -796,25 +830,25 @@ namespace ComputationalMechanicsLibrary
 		Matrix<T> InverseGaussJordan()
 		{
 			//阶数
-			int n = this->CheckSquare() ? this->row : throw std::exception("not a square");
+			size_t n = this->CheckSquare() ? this->row : throw std::exception("not a square");
 			//顺便把异常抛了出去
 
 			Matrix<T> result(*this);
-			int* jr = new int[this->row];
-			int* jc = new int[this->column];
+			size_t* jr = new size_t[this->row];
+			size_t* jc = new size_t[this->column];
 
 			double max;
 
-			for (int k = 0; k < result.row; k++)
+			for (size_t k = 0; k < result.row; k++)
 			{
 				//全选主元
 				max = 0;
 				jr[k] = k;
 				jc[k] = k;
 
-				for (int i = k; i < result.row; i++)
+				for (size_t i = k; i < result.row; i++)
 				{
-					for (int j = k; j < result.column; j++)
+					for (size_t j = k; j < result.column; j++)
 					{
 						if (max < std::abs(result.array[i][j]))
 						{
@@ -844,18 +878,18 @@ namespace ComputationalMechanicsLibrary
 
 				result.array[k][k] = 1.0 / result.array[k][k];
 
-				for (int j = 0; j < result.column; j++)
+				for (size_t j = 0; j < result.column; j++)
 				{
 					if (j != k)
 					{
 						result.array[k][j] *= result.array[k][k];
 					}
 				}
-				for (int i = 0; i < result.row; i++)
+				for (size_t i = 0; i < result.row; i++)
 				{
 					if (i != k)
 					{
-						for (int j = 0; j < result.column; j++)
+						for (size_t j = 0; j < result.column; j++)
 						{
 							if (j != k)
 							{
@@ -864,7 +898,7 @@ namespace ComputationalMechanicsLibrary
 						}
 					}
 				}
-				for (int i = 0; i < result.row; i++)
+				for (size_t i = 0; i < result.row; i++)
 				{
 					if (i != k)
 					{
@@ -875,7 +909,7 @@ namespace ComputationalMechanicsLibrary
 			}
 
 			//恢复
-			for (int k = result.row - 1; k >= 0; k--)
+			for (size_t k = result.row - 1; k >= 0; k--)
 			{
 				if (jc[k] != k)
 				{
@@ -901,27 +935,27 @@ namespace ComputationalMechanicsLibrary
 		T DeterminantGaussJordan()
 		{
 			//阶数
-			int n = this->CheckSquare() ? this->row : throw std::exception("not a square");			
+			size_t n = this->CheckSquare() ? this->row : throw std::exception("not a square");			
 			//顺便把异常抛了出去
 			T resultD = (T)1;
 
 
 			Matrix<T> result(*this);
-			int* jr = new int[this->row];
-			int* jc = new int[this->column];
+			size_t* jr = new size_t[this->row];
+			size_t* jc = new size_t[this->column];
 
 			double max;
 
-			for (int k = 0; k < result.row; k++)
+			for (size_t k = 0; k < result.row; k++)
 			{
 				//全选主元
 				max = 0;
 				jr[k] = k;
 				jc[k] = k;
 
-				for (int i = k; i < result.row; i++)
+				for (size_t i = k; i < result.row; i++)
 				{
-					for (int j = k; j < result.column; j++)
+					for (size_t j = k; j < result.column; j++)
 					{
 						if (max < std::abs(result.array[i][j]))
 						{
@@ -954,18 +988,18 @@ namespace ComputationalMechanicsLibrary
 				resultD *= result.array[k][k];
 				result.array[k][k] = 1.0 / result.array[k][k];
 
-				for (int j = 0; j < result.column; j++)
+				for (size_t j = 0; j < result.column; j++)
 				{
 					if (j != k)
 					{
 						result.array[k][j] *= result.array[k][k];
 					}
 				}
-				for (int i = 0; i < result.row; i++)
+				for (size_t i = 0; i < result.row; i++)
 				{
 					if (i != k)
 					{
-						for (int j = 0; j < result.column; j++)
+						for (size_t j = 0; j < result.column; j++)
 						{
 							if (j != k)
 							{
@@ -974,7 +1008,7 @@ namespace ComputationalMechanicsLibrary
 						}
 					}
 				}
-				for (int i = 0; i < result.row; i++)
+				for (size_t i = 0; i < result.row; i++)
 				{
 					if (i != k)
 					{
@@ -985,7 +1019,7 @@ namespace ComputationalMechanicsLibrary
 			}
 
 			//恢复
-			for (int k = result.row - 1; k >= 0; k--)
+			for (size_t k = result.row - 1; k >= 0; k--)
 			{
 				if (jc[k] != k)
 				{
@@ -1017,9 +1051,9 @@ namespace ComputationalMechanicsLibrary
 	{
 		std::ofstream outfile(filename);
 
-		for (int i = 0; i < matrix.Row(); i++)
+		for (size_t i = 0; i < matrix.Row(); i++)
 		{
-			for (int j = 0; j < matrix.Column()-1; j++)
+			for (size_t j = 0; j < matrix.Column()-1; j++)
 			{
 				outfile << matrix[i][j] << ",";
 			}
@@ -1038,8 +1072,8 @@ namespace ComputationalMechanicsLibrary
 		
 		std::ifstream inFileRow(filename);
 		std::string  s;
-		int row = 0;
-		int column = 0;
+		size_t row = 0;
+		size_t column = 0;
 		bool ifColumn = false;
 		while (std::getline(inFileRow, s))
 		{
@@ -1047,7 +1081,7 @@ namespace ComputationalMechanicsLibrary
 			if (ifColumn == false)
 			{
 				column = 0;
-				for (int i = 0; i < s.length(); i++)
+				for (size_t i = 0; i < s.length(); i++)
 				{
 					if (s[i] == ',')
 					{
@@ -1065,9 +1099,9 @@ namespace ComputationalMechanicsLibrary
 		matrix = Matrix<T>(row, column);
 
 		char d;
-		for (int i = 0; i < matrix.Row(); i++)
+		for (size_t i = 0; i < matrix.Row(); i++)
 		{
-			for (int j = 0; j < matrix.Column()-1; j++)
+			for (size_t j = 0; j < matrix.Column()-1; j++)
 			{
 				infile >> matrix[i][j] >> d;
 			}
@@ -1077,6 +1111,22 @@ namespace ComputationalMechanicsLibrary
 
 		infile.close();
 	}
+	
+	template<typename T>
+	void PrintMatrixToConsole(ComputationalMechanicsLibrary::Matrix<T> &_matrix)
+	{
+		for (size_t i = 0; i < _matrix.Row(); i++)
+		{
+			for (size_t j = 0; j < _matrix.Column(); j++)
+			{
+				std::cout << _matrix[i][j];
+				if (j != _matrix.Column() - 1)
+				{
+					std::cout << ',';
+				}
+			}
 
-
+			std::cout << std::endl;
+		}
+	}
 }
